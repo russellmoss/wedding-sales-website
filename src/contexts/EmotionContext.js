@@ -143,8 +143,8 @@ export function EmotionProvider({ children }) {
     }
   };
 
-   // Analyze message for emotional content
-   const analyzeMessageForEmotion = (message, currentEmotion, currentIntensity, scenario) => {
+  // Analyze message for emotional content
+  const analyzeMessageForEmotion = (message, currentEmotion, currentIntensity, scenario) => {
     const messageLower = message.toLowerCase();
     let newEmotion = currentEmotion;
     let newIntensity = currentIntensity;
@@ -335,66 +335,6 @@ export function EmotionProvider({ children }) {
       newIntensity,
       isNegativeSpike
     });
-    
-    return { newEmotion, newIntensity, isNegativeSpike };
-    
-    // Count keyword matches
-    const keywordPositiveCount = positiveKeywords.filter(word => messageLower.includes(word)).length;
-    const keywordNegativeCount = negativeKeywords.filter(word => messageLower.includes(word)).length;
-    const keywordNeutralCount = neutralKeywords.filter(word => messageLower.includes(word)).length;
-    
-    // Determine emotion change
-    if (keywordPositiveCount > keywordNegativeCount && keywordPositiveCount > keywordNeutralCount) {
-      // Positive emotion
-      if (keywordPositiveCount > 3) {
-        newEmotion = 'very_positive';
-        newIntensity = Math.min(currentIntensity + 0.2, 1.0);
-      } else {
-        newEmotion = 'positive';
-        newIntensity = Math.min(currentIntensity + 0.1, 0.9);
-      }
-    } else if (keywordNegativeCount > keywordPositiveCount && keywordNegativeCount > keywordNeutralCount) {
-      // Negative emotion
-      if (keywordNegativeCount > 3) {
-        newEmotion = 'very_negative';
-        newIntensity = Math.max(currentIntensity - 0.3, 0.1);
-        isNegativeSpike = true;
-      } else {
-        newEmotion = 'negative';
-        newIntensity = Math.max(currentIntensity - 0.2, 0.2);
-      }
-    } else {
-      // Neutral or mixed emotion
-      newEmotion = 'neutral';
-      newIntensity = 0.5;
-    }
-    
-    // Adjust based on scenario-specific triggers
-    if (scenario.id === 'initial-inquiry') {
-      // For initial inquiry, check for personalization
-      if (messageLower.includes(scenario.clientPersonality.name.toLowerCase().split(' ')[0])) {
-        newEmotion = 'positive';
-        newIntensity = Math.min(currentIntensity + 0.15, 0.9);
-      }
-    } else if (scenario.id === 'qualification-call') {
-      // For qualification call, check for budget discussion
-      if (messageLower.includes('budget') || messageLower.includes('cost') || messageLower.includes('price')) {
-        newEmotion = 'concerned';
-        newIntensity = Math.max(currentIntensity - 0.1, 0.3);
-      }
-    } else if (scenario.id === 'venue-tour') {
-      // For venue tour, check for specific feature mentions
-      if (messageLower.includes('outdoor') || messageLower.includes('ceremony') || messageLower.includes('rustic')) {
-        newEmotion = 'excited';
-        newIntensity = Math.min(currentIntensity + 0.15, 0.9);
-      }
-    } else if (scenario.id === 'proposal-presentation') {
-      // For proposal presentation, check for value discussion
-      if (messageLower.includes('value') || messageLower.includes('worth') || messageLower.includes('package')) {
-        newEmotion = 'interested';
-        newIntensity = Math.min(currentIntensity + 0.1, 0.8);
-      }
-    }
     
     return { newEmotion, newIntensity, isNegativeSpike };
   };
