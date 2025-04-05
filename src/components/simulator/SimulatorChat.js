@@ -18,12 +18,15 @@ const SimulatorChat = () => {
     error: simulatorError
   } = useSimulator();
   
-  const { currentEmotion, emotionIntensity } = useEmotion();
+  const { currentEmotion, emotionIntensity, updateEmotion } = useEmotion();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [localLoading, setLocalLoading] = useState(true);
   const [localError, setLocalError] = useState(null);
   const chatEndRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes in seconds
+  const [isTimeoutActive, setIsTimeoutActive] = useState(false);
   
   // Combine local and context loading states
   const isLoading = localLoading || simulatorLoading;
@@ -49,6 +52,70 @@ const SimulatorChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory]);
+
+  // Start the timeout timer when the simulation starts
+  useEffect(() => {
+    if (isSimulationActive && chatHistory.length > 0 && !isTimeoutActive) {
+      console.log("Starting 30-minute response timeout timer");
+      setIsTimeoutActive(true);
+      
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearInterval(timeoutRef.current);
+      }
+      
+      // Set up the countdown timer
+      timeoutRef.current = setInterval(() => {
+        setTimeRemaining(prevTime => {
+          if (prevTime <= 1) {
+            // Time's up - trigger frustration
+            clearInterval(timeoutRef.current);
+            handleTimeoutFrustration();
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+      
+      return () => {
+        if (timeoutRef.current) {
+          clearInterval(timeoutRef.current);
+        }
+      };
+    }
+  }, [isSimulationActive, chatHistory.length, isTimeoutActive]);
+  
+  // Reset timeout when user sends a message
+  useEffect(() => {
+    if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].type === 'user') {
+      console.log("User responded - resetting timeout timer");
+      setTimeRemaining(30 * 60); // Reset to 30 minutes
+    }
+  }, [chatHistory]);
+  
+  // Handle timeout frustration
+  const handleTimeoutFrustration = () => {
+    console.log("Timeout reached - customer is getting frustrated");
+    
+    // Update emotion to frustrated with high intensity
+    updateEmotion('frustrated', 0.9, 'No response received within 30 minutes');
+    
+    // Add a system message about the timeout
+    const timeoutMessage = {
+      type: 'system',
+      content: "The customer is getting frustrated due to the delayed response.",
+      timestamp: new Date().toISOString()
+    };
+    
+    addMessage(timeoutMessage, 'system', false);
+  };
+  
+  // Format time remaining for display
+  const formatTimeRemaining = () => {
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
 
   // Update typing indicator based on chat history changes
   useEffect(() => {
@@ -305,6 +372,26 @@ const SimulatorChat = () => {
           <h1 className="text-xl font-semibold text-gray-900">{currentScenario.title}</h1>
           <p className="text-sm text-gray-600">{currentScenario.description}</p>
           {renderEmotionIndicator()}
+          
+          {/* Response Timer */}
+          {isTimeoutActive && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-blue-800">
+                  <span className="font-medium">Response Timer:</span> Customer expects a response within 30 minutes
+                </div>
+                <div className={`text-sm font-mono ${timeRemaining < 300 ? 'text-red-600 font-bold' : 'text-blue-800'}`}>
+                  {formatTimeRemaining()}
+                </div>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
+                  style={{ width: `${(timeRemaining / (30 * 60)) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -320,6 +407,8 @@ const SimulatorChat = () => {
                 className={`max-w-[80%] rounded-lg p-4 text-left ${
                   msg.type === 'user'
                     ? 'bg-blue-500 text-white'
+                    : msg.type === 'system'
+                    ? 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500'
                     : 'bg-white text-gray-900 shadow-sm'
                 }`}
               >
@@ -375,12 +464,12 @@ const SimulatorChat = () => {
               placeholder="Type your message... (Press Shift+Enter for new line)"
               className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows="3"
-              disabled={!isSimulationActive}
+              disabled={isLoading}
             />
             <button
               type="submit"
               className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50"
-              disabled={!isSimulationActive || !inputValue.trim()}
+              disabled={isLoading || !inputValue.trim()}
             >
               Send
             </button>
