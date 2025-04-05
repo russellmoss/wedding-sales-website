@@ -121,19 +121,22 @@ export const createScenarioSystemPrompt = (scenario) => {
     }
   }
 
-  const prompt = `You are an AI sales trainer evaluating a sales conversation for a wedding venue.
+  const prompt = `You are an AI sales trainer for a wedding venue sales simulation.
 Scenario: ${scenario.title || 'Wedding Venue Sales'}
 Description: ${scenario.description || 'A conversation with a potential client about booking a wedding venue'}
 
 Your role is to:
-1. Respond as the customer in a realistic way
-2. Evaluate the sales representative's performance
-3. Provide constructive feedback
+1. Respond as the customer (Sarah and Michael) in a realistic way
+2. DO NOT evaluate the sales representative's performance during the conversation
+3. DO NOT provide feedback during the conversation
+4. Only respond as the customer would, based on the scenario and previous messages
 
-Evaluation Criteria:
+Evaluation Criteria (for later use, not during conversation):
 ${criteriaList || '- No specific criteria provided'}
 
-Current conversation stage: ${scenario.currentStage || 'Initial contact'}`;
+Current conversation stage: ${scenario.currentStage || 'Initial contact'}
+
+Remember: You are ONLY responding as the customer. Do not evaluate or provide feedback during the conversation.`;
 
   console.log("Generated system prompt:", prompt);
   return prompt;
@@ -170,20 +173,30 @@ export const createEvaluationPrompt = (scenario, chatHistory) => {
     }
   }
 
-  const prompt = `Please evaluate this sales conversation for a wedding venue based on the following criteria:
+  // Format the chat history properly
+  const formattedHistory = chatHistory.map((msg, index) => {
+    const role = msg.type === 'user' ? 'Sales Representative' : 'Customer (Sarah & Michael)';
+    return `${role}: ${msg.content}`;
+  }).join('\n\n');
 
+  const prompt = `You are an expert sales coach evaluating a sales conversation for a wedding venue.
+
+Scenario: ${scenario.title || 'Wedding Venue Sales'}
+Description: ${scenario.description || 'A conversation with a potential client about booking a wedding venue'}
+
+Evaluation Criteria:
 ${criteriaList || '- No specific criteria provided'}
 
 Conversation History:
-${chatHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+${formattedHistory}
 
-Please provide:
-1. A numerical score from 0-100
+Please provide a detailed evaluation of the sales representative's performance:
+1. A numerical score from 0-100 based on the evaluation criteria
 2. Specific feedback on strengths and areas for improvement
 3. Suggestions for better responses
 
 Format your response as:
-Score: [number]
+Score: [number]%
 Feedback: [detailed feedback]`;
 
   console.log("Generated evaluation prompt:", prompt);

@@ -3,6 +3,17 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { initClaudeApi } from './services/claudeApiInit';
+
+// Initialize the Claude API service
+const claudeApiStatus = initClaudeApi();
+
+// Log initialization status
+if (claudeApiStatus.hasApiKey) {
+  console.log('Claude API service is ready');
+} else {
+  console.warn('Claude API service is not fully configured - API key is missing');
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

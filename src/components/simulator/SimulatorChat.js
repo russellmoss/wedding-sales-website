@@ -43,61 +43,23 @@ const SimulatorChat = () => {
           const systemPrompt = createScenarioSystemPrompt(currentScenario);
           console.log("System prompt created:", systemPrompt);
           
-          // Prepare initial message for Claude
+          // Prepare initial message for Claude - this should be the customer's inquiry
           const initialMessage = {
-            role: "assistant",
-            content: "I'm interested in learning more about Milea Estate Vineyard for our wedding. Could you tell me about your venue?"
+            role: "user",
+            content: "Hi, my name is Sarah and my fiancé Michael and I are interested in learning more about Milea Estate Vineyard for our wedding. Could you tell us about your venue?"
           };
           
-          // Send initial message to Claude
-          console.log("Sending initial message to Claude...");
-          const response = await sendMessageToClaude(
-            systemPrompt,
-            [initialMessage],
-            { 
-              temperature: 0.8,
-              requestType: 'initial-message',
-              model: process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229'
-            }
-          );
-          
-          console.log("Claude API response:", response);
-          
-          // Extract the AI's response text from the response structure
-          let aiResponseText = '';
-          
-          // Handle different possible response structures
-          if (response && response.content && Array.isArray(response.content) && response.content.length > 0) {
-            // New Claude API structure
-            if (response.content[0].text) {
-              aiResponseText = response.content[0].text;
-            } else if (response.content[0].type === 'text') {
-              aiResponseText = response.content[0].text;
-            }
-          } else if (response && response.message && response.message.content) {
-            // Alternative structure
-            aiResponseText = response.message.content;
-          } else if (response && typeof response === 'string') {
-            // Direct string response
-            aiResponseText = response;
-          } else if (response && response.choices && response.choices.length > 0) {
-            // OpenAI-style structure
-            aiResponseText = response.choices[0].message.content;
-          } else {
-            // Fallback - try to extract any text content
-            console.error("Unexpected response structure:", response);
-            aiResponseText = "I'm interested in learning more about your venue for our wedding. Could you tell me about Milea Estate Vineyard?";
-          }
-          
-          console.log("Extracted AI response text:", aiResponseText);
-          
-          // Add Claude's response to chat history
-          const aiResponse = {
-            type: 'ai',
-            content: aiResponseText,
+          // Add the initial user message to chat history without sending to Claude
+          console.log("Adding initial customer inquiry to chat history");
+          const userMessage = {
+            type: 'user',
+            content: initialMessage.content,
             timestamp: new Date().toISOString()
           };
-          addMessage(aiResponse);
+          addMessage(userMessage);
+          
+          // We don't send this to Claude yet - the user will respond first
+          console.log("Initial customer inquiry added. Waiting for user response.");
         } catch (err) {
           console.error("Error initiating chat:", err);
           setError(`Failed to start conversation: ${err.message}`);
@@ -105,7 +67,7 @@ const SimulatorChat = () => {
           // Add fallback error message
           const errorResponse = {
             type: 'ai',
-            content: "I'm interested in learning more about your venue for our wedding. Could you tell me about Milea Estate Vineyard?",
+            content: "Thank you for your interest in Milea Estate Vineyard! I'd be happy to tell you about our venue. What aspects are you most interested in learning about?",
             timestamp: new Date().toISOString()
           };
           addMessage(errorResponse);
@@ -191,6 +153,19 @@ const SimulatorChat = () => {
       
       console.log("Extracted AI response text:", aiResponseText);
       
+      // Check if the response contains evaluation feedback
+      if (aiResponseText.includes("Score:") || aiResponseText.includes("Feedback:")) {
+        console.log("AI response contains evaluation feedback. This should not happen during the conversation.");
+        // Extract just the customer response part if possible
+        const customerResponseMatch = aiResponseText.match(/\*responds as the customer\*\s*([\s\S]*?)(?=\*evaluates|$)/i);
+        if (customerResponseMatch && customerResponseMatch[1]) {
+          aiResponseText = customerResponseMatch[1].trim();
+        } else {
+          // If we can't extract just the customer response, use a fallback
+          aiResponseText = "Thank you for your interest in Milea Estate Vineyard! I'd be happy to tell you about our venue. What aspects are you most interested in learning about?";
+        }
+      }
+      
       // Add Claude's response to chat history
       const aiResponse = {
         type: 'ai',
@@ -235,6 +210,16 @@ const SimulatorChat = () => {
       </div>
     );
   }
+
+  // Handle keydown events in the textarea
+  const handleKeyDown = (e) => {
+    // If Enter is pressed without Shift, prevent form submission
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      // Submit the form programmatically
+      handleSubmit(e);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -295,12 +280,13 @@ const SimulatorChat = () => {
       <div className="bg-white border-t p-4">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="flex space-x-2">
-            <input
-              type="text"
+            <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message... (Press Shift+Enter for new line)"
+              className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              rows="3"
               disabled={isTyping}
             />
             <button

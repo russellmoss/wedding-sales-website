@@ -48,6 +48,7 @@ export const makeRateLimitedRequest = async (requestFn, retryCount = 0) => {
     // Check if we're rate limited
     if (isRateLimited()) {
       const waitTime = RATE_LIMIT_WINDOW_MS - (Date.now() - apiRequestLog[0]);
+      console.warn(`Rate limit exceeded. Waiting ${Math.ceil(waitTime / 1000)} seconds before retrying.`);
       throw new Error(`Rate limit exceeded. Try again in ${Math.ceil(waitTime / 1000)} seconds.`);
     }
     
@@ -57,6 +58,14 @@ export const makeRateLimitedRequest = async (requestFn, retryCount = 0) => {
     // Make the request
     return await requestFn();
   } catch (error) {
+    // Log the error details
+    console.error('API request error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      retryCount
+    });
+    
     // Handle rate limit errors with exponential backoff
     if (
       (error.message.includes('rate limit') || error.message.includes('429')) &&
@@ -64,6 +73,19 @@ export const makeRateLimitedRequest = async (requestFn, retryCount = 0) => {
     ) {
       const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
       console.log(`Rate limit hit, retrying in ${delay}ms...`);
+      
+      // Wait and then retry
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return makeRateLimitedRequest(requestFn, retryCount + 1);
+    }
+    
+    // Handle network errors with retries
+    if (
+      (error.message.includes('Failed to fetch') || error.message.includes('Network')) &&
+      retryCount < MAX_RETRIES
+    ) {
+      const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
+      console.log(`Network error, retrying in ${delay}ms...`);
       
       // Wait and then retry
       await new Promise(resolve => setTimeout(resolve, delay));

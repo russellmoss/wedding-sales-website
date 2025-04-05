@@ -29,11 +29,34 @@ const FeedbackDisplay = () => {
           const response = await sendMessageToClaude(
             "You are an expert sales coach evaluating a sales conversation. Provide detailed, constructive feedback.",
             [{ role: "user", content: evaluationPrompt }],
-            { temperature: 0.3, max_tokens: 1500 }
+            { 
+              temperature: 0.3, 
+              max_tokens: 1500,
+              requestType: 'evaluation',
+              model: process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229' // Use the same model as other requests
+            }
           );
           
           // Extract feedback from Claude's response
-          const feedbackContent = response.content[0].text;
+          let feedbackContent = '';
+          
+          // Handle different response structures
+          if (response && response.content && Array.isArray(response.content) && response.content.length > 0) {
+            if (response.content[0].text) {
+              feedbackContent = response.content[0].text;
+            } else if (response.content[0].type === 'text') {
+              feedbackContent = response.content[0].text;
+            }
+          } else if (response && response.message && response.message.content) {
+            feedbackContent = response.message.content;
+          } else if (response && typeof response === 'string') {
+            feedbackContent = response;
+          } else if (response && response.choices && response.choices.length > 0) {
+            feedbackContent = response.choices[0].message.content;
+          } else {
+            console.error("Unexpected feedback response structure:", response);
+            feedbackContent = "I'm sorry, I couldn't generate detailed feedback at this time. Here's a basic assessment based on the conversation length and content.";
+          }
           
           // Save the feedback
           setFeedback(feedbackContent);
@@ -49,6 +72,14 @@ const FeedbackDisplay = () => {
         } catch (err) {
           console.error("Error generating feedback:", err);
           setError(`Failed to generate feedback: ${err.message}`);
+          
+          // Provide a fallback feedback message
+          const fallbackFeedback = `I'm sorry, I couldn't generate detailed feedback at this time. Here's a basic assessment based on the conversation length and content.
+
+Score: ${calculateBasicScore(chatHistory)}%
+Feedback: Based on the conversation, you demonstrated good communication skills. To improve, consider asking more specific questions about the couple's preferences and providing clearer next steps.`;
+          
+          setFeedback(fallbackFeedback);
           setScore(calculateBasicScore(chatHistory));
         } finally {
           setIsLoading(false);
@@ -94,67 +125,58 @@ const FeedbackDisplay = () => {
     return 'text-red-600';
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Generating feedback...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Simulation Feedback: {currentScenario.title}
-          </h1>
+    <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-4">Simulation Results</h2>
+        
+        {/* Scenario Info */}
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold mb-2">{currentScenario.title}</h3>
           <p className="text-gray-600">{currentScenario.description}</p>
         </div>
 
         {/* Score Display */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Overall Performance</h2>
-            <div className={`text-3xl font-bold ${getScoreColor(score)}`}>
-              {score}%
-            </div>
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold mb-2">Performance Score</h3>
+          <div className={`text-4xl font-bold ${getScoreColor(score)}`}>
+            {score}%
           </div>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <p className="font-bold">Error</p>
-            <p>{error}</p>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         )}
 
-        {/* Feedback Content */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Detailed Feedback</h2>
-          <div className="prose max-w-none">
-            {feedback ? (
-              <div className="whitespace-pre-wrap">{feedback}</div>
-            ) : (
-              <p className="text-gray-600">No feedback available.</p>
-            )}
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
           </div>
-        </div>
+        )}
 
-        {/* Action Buttons */}
-        <div className="flex justify-center space-x-4">
-          <button
-            onClick={handleStartNewSimulation}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Start New Simulation
-          </button>
-        </div>
+        {/* Feedback Display */}
+        {!isLoading && !error && feedback && (
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mb-4">Feedback</h3>
+            <div className="prose max-w-none">
+              {feedback.split('\n').map((paragraph, index) => (
+                <p key={index} className="mb-4">{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Start New Simulation Button */}
+        <button
+          onClick={handleStartNewSimulation}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
+        >
+          Start New Simulation
+        </button>
       </div>
     </div>
   );
