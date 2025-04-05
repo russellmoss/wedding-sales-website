@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Gilda+Display&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-darkBrown;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .button {
+    @apply px-6 py-2 rounded-md font-medium transition-colors;
+  }
+  
+  .button-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700;
+  }
+  
+  .button-secondary {
+    @apply bg-white text-darkBrown border border-darkBrown hover:bg-gray-50;
+  }
+
+  .nav-link {
+    @apply text-darkBrown hover:text-darkBrownHover;
+  }
+
+  .nav-link-active {
+    @apply text-darkBrownHover font-bold;
+  }
+}
+
+/* Fade transition classes */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
