@@ -1,41 +1,44 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import ContentPage from '../layout/ContentPage';
 import SimulatorHome from './SimulatorHome';
-import SimulationChat from './SimulationChat';
+import SimulatorBrief from './SimulatorBrief';
+import SimulatorChat from './SimulatorChat';
 import FeedbackDisplay from './FeedbackDisplay';
 import { useSimulator } from '../../contexts/SimulatorContext';
 
 function SalesSimulator() {
   const { isSimulationActive } = useSimulator();
+  const location = useLocation();
+  
+  console.log("SalesSimulator: Current location:", location.pathname);
+  console.log("SalesSimulator: isSimulationActive:", isSimulationActive);
 
   return (
     <ContentPage title="Sales Simulator">
-      <div className="space-y-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <p className="mb-4">
-            Practice your sales skills with interactive scenarios. Choose a scenario to begin,
-            and you'll be guided through a realistic sales conversation with immediate feedback.
-          </p>
-        </div>
-
-        <Routes>
-          <Route index element={<SimulatorHome />} />
-          <Route 
-            path="chat" 
-            element={
-              isSimulationActive ? (
-                <SimulationChat />
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">Please select a scenario to begin.</p>
-                </div>
-              )
-            } 
-          />
-          <Route path="feedback" element={<FeedbackDisplay />} />
-        </Routes>
-      </div>
+      <Routes>
+        <Route index element={<SimulatorHome />} />
+        <Route path="brief" element={<SimulatorBrief />} />
+        <Route 
+          path="chat" 
+          element={
+            isSimulationActive ? (
+              <SimulatorChat />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Please select a scenario to begin.</p>
+                <button 
+                  onClick={() => window.location.href = '/simulator'}
+                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Return to Scenarios
+                </button>
+              </div>
+            )
+          } 
+        />
+        <Route path="feedback" element={<FeedbackDisplay />} />
+      </Routes>
     </ContentPage>
   );
 }
