@@ -343,6 +343,7 @@ const getEmotionColor = (emotion) => {
     case 'enthusiastic':
     case 'delighted':
     case 'pleased':
+    case 'very_positive':
       return '#4CAF50'; // Green
     case 'hopeful':
     case 'optimistic':
@@ -351,37 +352,54 @@ const getEmotionColor = (emotion) => {
     case 'curious':
     case 'interested':
     case 'engaged':
+    case 'positive':
       return '#9C27B0'; // Purple
     case 'grateful':
     case 'appreciative':
+    case 'satisfied':
       return '#00BCD4'; // Cyan
+    case 'thrilled':
+    case 'eager':
+    case 'ecstatic':
+      return '#8BC34A'; // Light Green
       
     // Neutral emotions
     case 'neutral':
     case 'calm':
     case 'composed':
+    case 'attentive':
       return '#9E9E9E'; // Grey
       
     // Negative emotions
     case 'concerned':
     case 'worried':
     case 'anxious':
+    case 'hesitant':
       return '#FFC107'; // Yellow
     case 'frustrated':
     case 'angry':
     case 'irritated':
     case 'annoyed':
+    case 'very_negative':
       return '#F44336'; // Red
     case 'sad':
     case 'disappointed':
     case 'unhappy':
+    case 'negative':
       return '#2196F3'; // Blue
     case 'confused':
     case 'uncertain':
+    case 'doubtful':
+    case 'skeptical':
       return '#795548'; // Brown
     case 'impatient':
     case 'rushed':
+    case 'pressured':
       return '#E91E63'; // Pink
+    case 'surprised':
+    case 'shocked':
+    case 'taken_aback':
+      return '#673AB7'; // Deep Purple
     default:
       return '#9E9E9E'; // Default grey color
   }
