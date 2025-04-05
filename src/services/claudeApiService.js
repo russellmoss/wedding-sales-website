@@ -4,12 +4,15 @@
  */
 
 import { makeRateLimitedRequest, formatClaudeError, trackTokenUsage } from '../utils/claudeApiUtils';
-import { logApiRequest, logApiResponse, logApiError } from '../utils/claudeApiLogger';
+import { logApiRequest, logApiResponse, logApiError, LOG_LEVELS, setLogLevel } from '../utils/claudeApiLogger';
 
 // Configuration constants
 const API_BASE_URL = process.env.REACT_APP_CLAUDE_API_URL || 'https://api.anthropic.com/v1';
 const MODEL = process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229';
 const MAX_TOKENS = parseInt(process.env.REACT_APP_CLAUDE_MAX_TOKENS || '1000');
+
+// Set initial log level based on environment
+setLogLevel(process.env.NODE_ENV === 'development' ? 'DEBUG' : 'INFO');
 
 /**
  * Sends a message to Claude API and returns the response
@@ -20,11 +23,16 @@ const MAX_TOKENS = parseInt(process.env.REACT_APP_CLAUDE_MAX_TOKENS || '1000');
  * @returns {Promise<Object>} - Claude's response
  */
 export const sendMessageToClaude = async (systemPrompt, messages, options = {}) => {
+  const requestType = options.type || 'conversation';
+  const startTime = Date.now();
+  
   try {
     const apiKey = process.env.REACT_APP_CLAUDE_API_KEY;
     
     if (!apiKey) {
-      throw new Error('Claude API key is not configured');
+      const error = new Error('Claude API key is not configured');
+      logApiError(requestType, error);
+      throw error;
     }
     
     // Construct the request body
@@ -36,8 +44,8 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
       temperature: options.temperature || 0.7,
     };
     
-    // Log the request
-    logApiRequest('conversation', {
+    // Log the request with metadata
+    logApiRequest(requestType, {
       url: `${API_BASE_URL}/messages`,
       method: 'POST',
       headers: {
@@ -45,7 +53,17 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
         'x-api-key': '[REDACTED]',
         'anthropic-version': '2023-06-01'
       },
-      body: requestBody
+      body: requestBody,
+      metadata: {
+        messageCount: messages.length,
+        systemPromptLength: systemPrompt.length,
+        options: {
+          ...options,
+          model: options.model || MODEL,
+          max_tokens: options.max_tokens || MAX_TOKENS,
+          temperature: options.temperature || 0.7
+        }
+      }
     });
     
     // Use the rate-limited request function
@@ -73,16 +91,38 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
       return await response.json();
     });
     
-    // Log the response
-    logApiResponse('conversation', data);
+    // Calculate request duration
+    const duration = Date.now() - startTime;
+    
+    // Log the response with metadata
+    logApiResponse(requestType, {
+      ...data,
+      metadata: {
+        duration,
+        tokenUsage: data.usage,
+        model: data.model
+      }
+    });
     
     // Track token usage for monitoring
     trackTokenUsage(data);
     
     return data;
   } catch (error) {
-    // Log the error
-    logApiError('conversation', error);
+    // Calculate request duration even for errors
+    const duration = Date.now() - startTime;
+    
+    // Log the error with additional context
+    logApiError(requestType, {
+      ...error,
+      metadata: {
+        duration,
+        requestType,
+        systemPromptLength: systemPrompt.length,
+        messageCount: messages.length
+      }
+    });
+    
     console.error('Error calling Claude API:', formatClaudeError(error));
     throw error;
   }
@@ -95,6 +135,17 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
  * @returns {string} - Formatted system prompt for Claude
  */
 export const createScenarioSystemPrompt = (scenario) => {
+  // Log the scenario being used
+  logApiRequest('scenario', {
+    type: 'scenario_prompt',
+    scenario: {
+      title: scenario.title,
+      clientName: scenario.clientPersonality.name,
+      traitCount: scenario.clientPersonality.traits.length,
+      concernCount: scenario.clientPersonality.concerns.length
+    }
+  });
+  
   return `
 You are role-playing as a potential wedding client named ${scenario.clientPersonality.name} who is considering Milea Estate Vineyard as a wedding venue.
 
@@ -129,6 +180,20 @@ The sales person (user) is practicing their sales techniques. Your job is to pro
  * @returns {string} - Evaluation prompt for Claude
  */
 export const createEvaluationPrompt = (scenario, chatHistory) => {
+  // Log the evaluation request
+  logApiRequest('evaluation', {
+    type: 'evaluation_prompt',
+    scenario: {
+      title: scenario.title,
+      criteriaCount: Object.keys(scenario.evaluationCriteria).length
+    },
+    chatHistory: {
+      messageCount: chatHistory.length,
+      userMessages: chatHistory.filter(msg => msg.type === 'user').length,
+      aiMessages: chatHistory.filter(msg => msg.type === 'ai').length
+    }
+  });
+  
   // Format chat history for the prompt
   const formattedChatHistory = chatHistory.map(msg => {
     const role = msg.type === 'user' ? 'Salesperson' : 'Client';
