@@ -3,6 +3,8 @@
  * Provides methods for sending messages to Claude and handling responses
  */
 
+import { makeRateLimitedRequest, formatClaudeError, trackTokenUsage } from '../utils/claudeApiUtils';
+
 // Configuration constants
 const API_BASE_URL = process.env.REACT_APP_CLAUDE_API_URL || 'https://api.anthropic.com/v1';
 const MODEL = process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229';
@@ -33,28 +35,37 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
       temperature: options.temperature || 0.7,
     };
     
-    // Make the API request
-    const response = await fetch(`${API_BASE_URL}/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(requestBody)
+    // Use the rate-limited request function
+    const data = await makeRateLimitedRequest(async () => {
+      // Make the API request
+      const response = await fetch(`${API_BASE_URL}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      // Handle API errors
+      if (!response.ok) {
+        const errorData = await response.json();
+        const error = new Error(`Claude API error: ${errorData.error?.message || response.statusText}`);
+        error.response = { status: response.status, data: errorData };
+        throw error;
+      }
+      
+      // Parse and return the response
+      return await response.json();
     });
     
-    // Handle API errors
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`Claude API error: ${errorData.error?.message || response.statusText}`);
-    }
+    // Track token usage for monitoring
+    trackTokenUsage(data);
     
-    // Parse and return the response
-    const data = await response.json();
     return data;
   } catch (error) {
-    console.error('Error calling Claude API:', error);
+    console.error('Error calling Claude API:', formatClaudeError(error));
     throw error;
   }
 };
