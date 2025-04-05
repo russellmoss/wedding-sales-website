@@ -153,9 +153,19 @@ export function EmotionProvider({ children }) {
     
     // Check for emotional keywords with word boundary matching
     const positiveKeywords = [
+      // General positive expressions
       'thank', 'appreciate', 'excited', 'happy', 'love', 'great', 'perfect', 
       'beautiful', 'amazing', 'wonderful', 'fantastic', 'excellent', 'pleased',
-      'interested', 'looking forward', 'eager', 'delighted', 'glad', 'thrilled'
+      'interested', 'looking forward', 'eager', 'delighted', 'glad', 'thrilled',
+      // Additional positive expressions
+      'impressed', 'satisfied', 'pleased', 'grateful', 'blessed', 'lucky',
+      'fortunate', 'inspired', 'motivated', 'enthusiastic', 'optimistic',
+      'confident', 'assured', 'comfortable', 'relaxed', 'at ease', 'peaceful',
+      'joyful', 'cheerful', 'upbeat', 'positive', 'encouraged', 'supported',
+      'valued', 'respected', 'understood', 'heard', 'listened to', 'cared for',
+      'special', 'unique', 'one of a kind', 'perfect for us', 'exactly what we want',
+      'dream', 'ideal', 'preferred', 'favorite', 'top choice', 'first choice',
+      'recommend', 'refer', 'share', 'tell others', 'spread the word'
     ];
     
     const negativeKeywords = [
@@ -260,20 +270,58 @@ export function EmotionProvider({ children }) {
     
     // Determine emotion change with hysteresis
     const emotionChangeThreshold = 0.2; // Minimum change required
-    const currentEmotionIsPositive = ['happy', 'excited', 'pleased', 'interested', 'hopeful'].includes(currentEmotion);
+    const currentEmotionIsPositive = ['happy', 'excited', 'pleased', 'interested', 'hopeful', 
+                                     'grateful', 'enthusiastic', 'optimistic', 'confident', 'satisfied'].includes(currentEmotion);
     const currentEmotionIsNegative = ['frustrated', 'angry', 'disappointed', 'worried', 'concerned'].includes(currentEmotion);
     
     if (positiveCount > negativeCount + emotionChangeThreshold) {
       // Positive emotion - categorize more specifically
-      if (positiveCount > 0.6) {
-        newEmotion = 'excited';
-        newIntensity = Math.min(currentIntensity + 0.15, 1.0);
-      } else if (messageLower.includes('interest') || messageLower.includes('curious')) {
-        newEmotion = 'interested';
-        newIntensity = Math.min(currentIntensity + 0.1, 0.8);
+      if (positiveCount > 0.7) {
+        // High positive intensity emotions
+        if (messageLower.includes('love') || messageLower.includes('perfect') || 
+            messageLower.includes('exactly what') || messageLower.includes('dream')) {
+          newEmotion = 'enthusiastic';
+          newIntensity = Math.min(currentIntensity + 0.2, 1.0);
+        } else if (messageLower.includes('thank') || messageLower.includes('appreciate') || 
+                  messageLower.includes('grateful')) {
+          newEmotion = 'grateful';
+          newIntensity = Math.min(currentIntensity + 0.15, 0.9);
+        } else {
+          newEmotion = 'excited';
+          newIntensity = Math.min(currentIntensity + 0.15, 1.0);
+        }
+      } else if (positiveCount > 0.5) {
+        // Medium positive intensity emotions
+        if (messageLower.includes('interest') || messageLower.includes('curious') || 
+            messageLower.includes('tell me more') || messageLower.includes('learn more')) {
+          newEmotion = 'interested';
+          newIntensity = Math.min(currentIntensity + 0.1, 0.8);
+        } else if (messageLower.includes('hope') || messageLower.includes('looking forward') || 
+                  messageLower.includes('future') || messageLower.includes('plan')) {
+          newEmotion = 'hopeful';
+          newIntensity = Math.min(currentIntensity + 0.1, 0.8);
+        } else if (messageLower.includes('good') || messageLower.includes('nice') || 
+                  messageLower.includes('pleasant') || messageLower.includes('enjoy')) {
+          newEmotion = 'pleased';
+          newIntensity = Math.min(currentIntensity + 0.1, 0.9);
+        } else {
+          newEmotion = 'satisfied';
+          newIntensity = Math.min(currentIntensity + 0.1, 0.8);
+        }
       } else {
-        newEmotion = 'pleased';
-        newIntensity = Math.min(currentIntensity + 0.1, 0.9);
+        // Lower positive intensity emotions
+        if (messageLower.includes('think') || messageLower.includes('consider') || 
+            messageLower.includes('maybe') || messageLower.includes('possibly')) {
+          newEmotion = 'curious';
+          newIntensity = Math.min(currentIntensity + 0.05, 0.7);
+        } else if (messageLower.includes('confident') || messageLower.includes('assured') || 
+                  messageLower.includes('comfortable') || messageLower.includes('at ease')) {
+          newEmotion = 'confident';
+          newIntensity = Math.min(currentIntensity + 0.05, 0.7);
+        } else {
+          newEmotion = 'optimistic';
+          newIntensity = Math.min(currentIntensity + 0.05, 0.7);
+        }
       }
     } else if (negativeCount > positiveCount + emotionChangeThreshold) {
       // Negative emotion - categorize more specifically
@@ -394,6 +442,11 @@ export function EmotionProvider({ children }) {
         { emotion: 'pleased', patterns: ['i am pleased', 'i\'m pleased', 'feeling pleased', 'very pleased'] },
         { emotion: 'interested', patterns: ['i am interested', 'i\'m interested', 'feeling interested', 'very interested'] },
         { emotion: 'hopeful', patterns: ['i am hopeful', 'i\'m hopeful', 'feeling hopeful', 'very hopeful'] },
+        { emotion: 'grateful', patterns: ['i am grateful', 'i\'m grateful', 'feeling grateful', 'very grateful', 'thank you so much'] },
+        { emotion: 'enthusiastic', patterns: ['i am enthusiastic', 'i\'m enthusiastic', 'feeling enthusiastic', 'very enthusiastic'] },
+        { emotion: 'optimistic', patterns: ['i am optimistic', 'i\'m optimistic', 'feeling optimistic', 'very optimistic'] },
+        { emotion: 'confident', patterns: ['i am confident', 'i\'m confident', 'feeling confident', 'very confident'] },
+        { emotion: 'satisfied', patterns: ['i am satisfied', 'i\'m satisfied', 'feeling satisfied', 'very satisfied'] },
         { emotion: 'frustrated', patterns: ['i am frustrated', 'i\'m frustrated', 'feeling frustrated', 'very frustrated'] },
         { emotion: 'angry', patterns: ['i am angry', 'i\'m angry', 'feeling angry', 'very angry'] },
         { emotion: 'disappointed', patterns: ['i am disappointed', 'i\'m disappointed', 'feeling disappointed', 'very disappointed'] },
@@ -417,6 +470,11 @@ export function EmotionProvider({ children }) {
         'pleased': ['not pleased', 'disappointed', 'frustrated'],
         'interested': ['not interested', 'disappointed', 'frustrated'],
         'hopeful': ['not hopeful', 'doubtful', 'skeptical'],
+        'grateful': ['not grateful', 'ungrateful', 'disappointed'],
+        'enthusiastic': ['not enthusiastic', 'unenthusiastic', 'disappointed'],
+        'optimistic': ['not optimistic', 'pessimistic', 'doubtful'],
+        'confident': ['not confident', 'uncertain', 'doubtful'],
+        'satisfied': ['not satisfied', 'dissatisfied', 'disappointed'],
         'frustrated': ['not frustrated', 'happy', 'pleased'],
         'angry': ['not angry', 'happy', 'pleased'],
         'disappointed': ['not disappointed', 'happy', 'pleased'],
@@ -451,8 +509,8 @@ export function EmotionProvider({ children }) {
       }
       
       // Check for emotional intensity mismatch
-      const highIntensityEmotions = ['excited', 'frustrated', 'angry', 'disappointed'];
-      const lowIntensityEmotions = ['pleased', 'interested', 'concerned', 'worried'];
+      const highIntensityEmotions = ['excited', 'enthusiastic', 'frustrated', 'angry', 'disappointed'];
+      const lowIntensityEmotions = ['pleased', 'interested', 'hopeful', 'grateful', 'optimistic', 'concerned', 'worried'];
       
       if (highIntensityEmotions.includes(newEmotion) && newIntensity < 0.6) {
         // If we detected a high-intensity emotion but the intensity is low, check if it's justified
@@ -721,6 +779,7 @@ export function EmotionProvider({ children }) {
     // Validate emotion is in our allowed list
     const validEmotions = [
       'happy', 'excited', 'pleased', 'interested', 'hopeful',
+      'grateful', 'enthusiastic', 'optimistic', 'confident', 'satisfied',
       'frustrated', 'angry', 'disappointed', 'worried', 'concerned',
       'confused', 'doubtful', 'annoyed', 'neutral'
     ];
