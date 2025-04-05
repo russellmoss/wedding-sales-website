@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { sendMessageToClaude, createScenarioSystemPrompt } from '../../services/claudeApiService';
 import { useEmotion } from '../../contexts/EmotionContext';
+import '../../styles/animations.css';
 
 const SimulatorChat = () => {
   const navigate = useNavigate();
@@ -167,23 +168,104 @@ const SimulatorChat = () => {
     const emotionColor = getEmotionColor(currentEmotion);
     const intensityPercent = Math.round(emotionIntensity * 100);
     
+    // Determine if this is a concerning emotion level that needs attention
+    const isNegativeEmotion = ['frustrated', 'angry', 'disappointed', 'worried', 
+                              'concerned', 'confused', 'doubtful', 'annoyed',
+                              'very_negative', 'negative'].includes(currentEmotion);
+    
+    const isHighIntensity = intensityPercent > 70;
+    const needsAttention = isNegativeEmotion && isHighIntensity;
+    
+    // Get emoji for current emotion
+    const getEmotionEmoji = (emotion) => {
+      switch(emotion.toLowerCase()) {
+        case 'happy': return '😊';
+        case 'excited': return '🤩';
+        case 'pleased': return '😌';
+        case 'hopeful': return '🤗';
+        case 'interested': return '🧐';
+        case 'grateful': return '🙏';
+        case 'neutral': return '😐';
+        case 'concerned': return '😟';
+        case 'worried': return '😰';
+        case 'frustrated': return '😤';
+        case 'angry': return '😠';
+        case 'disappointed': return '😞';
+        case 'confused': return '😕';
+        case 'doubtful': return '🤨';
+        case 'very_positive': return '😁';
+        case 'positive': return '🙂';
+        case 'very_negative': return '😡';
+        case 'negative': return '☹️';
+        default: return '😐';
+      }
+    };
+    
+    const emotionEmoji = getEmotionEmoji(currentEmotion);
+    
     return (
-      <div className="emotion-indicator">
-        <div className="emotion-label">
-          Customer Emotion: <span style={{ color: emotionColor }}>{currentEmotion}</span>
+      <div className={`emotion-indicator ${needsAttention ? 'attention-needed' : ''}`}
+           style={needsAttention ? {
+             backgroundColor: '#ffeeee',
+             borderLeft: `4px solid ${emotionColor}`,
+             padding: '12px',
+             animation: 'pulse 2s infinite'
+           } : {}}>
+        <div className="emotion-label" style={{ fontSize: needsAttention ? '18px' : '16px', display: 'flex', alignItems: 'center' }}>
+          <span style={{ marginRight: '8px', fontSize: '24px' }}>{emotionEmoji}</span>
+          Customer Emotion: <span style={{ 
+            color: emotionColor, 
+            fontWeight: needsAttention ? 'bold' : 'normal',
+            marginLeft: '4px'
+          }}>
+            {currentEmotion.charAt(0).toUpperCase() + currentEmotion.slice(1)}
+          </span>
+          {needsAttention && 
+            <span style={{ 
+              marginLeft: '10px', 
+              backgroundColor: '#ffcccb', 
+              padding: '3px 8px', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 'bold' 
+            }}>
+              Needs Attention!
+            </span>
+          }
         </div>
-        <div className="emotion-intensity">
-          Intensity: {intensityPercent}%
-          <div className="intensity-bar">
+        <div className="emotion-intensity" style={{ marginTop: '8px' }}>
+          Intensity: <strong>{intensityPercent}%</strong>
+          <div className="intensity-bar" style={{ 
+            height: '8px', 
+            backgroundColor: '#e9ecef',
+            borderRadius: '4px',
+            marginTop: '6px' 
+          }}>
             <div 
               className="intensity-fill" 
               style={{ 
                 width: `${intensityPercent}%`,
-                backgroundColor: emotionColor
+                backgroundColor: emotionColor,
+                height: '100%',
+                borderRadius: '4px',
+                transition: 'width 0.5s ease-out'
               }}
             />
           </div>
         </div>
+        
+        {needsAttention && (
+          <div style={{ 
+            marginTop: '10px', 
+            fontSize: '14px', 
+            color: '#d32f2f',
+            backgroundColor: 'rgba(211, 47, 47, 0.1)',
+            padding: '8px',
+            borderRadius: '4px'
+          }}>
+            <strong>Warning:</strong> Customer is showing signs of {currentEmotion}. Consider addressing their concerns immediately.
+          </div>
+        )}
       </div>
     );
   };
