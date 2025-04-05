@@ -67,18 +67,40 @@ export function EmotionProvider({ children }) {
       scenario
     );
     
+    // Analyze message sequence for frustration patterns
+    const { frustrationScore, frustrationPattern, recommendedAction } = analyzeMessageSequence(
+      [...emotionalState.history.map(record => record.trigger), messageContent],
+      scenario
+    );
+    
+    // Adjust emotion and intensity based on frustration analysis if needed
+    let adjustedEmotion = newEmotion;
+    let adjustedIntensity = newIntensity;
+    
+    if (frustrationScore > 0.6 && !isNegativeSpike) {
+      // If high frustration detected but not already marked as a spike,
+      // adjust the emotion to reflect this
+      adjustedEmotion = 'frustrated';
+      adjustedIntensity = Math.max(newIntensity, 0.7);
+      
+      // Log the frustration pattern detection
+      console.warn(`EmotionContext: 🚨 FRUSTRATION PATTERN DETECTED - ${frustrationPattern} - Recommended: ${recommendedAction}`);
+    }
+    
     // Determine if this is a significant emotional change
-    const emotionChanged = newEmotion !== emotionalState.currentEmotion;
-    const intensityChanged = Math.abs(newIntensity - emotionalState.intensity) > 0.15;
+    const emotionChanged = adjustedEmotion !== emotionalState.currentEmotion;
+    const intensityChanged = Math.abs(adjustedIntensity - emotionalState.intensity) > 0.15;
     const isSignificantChange = emotionChanged || intensityChanged;
     
     // Create emotion record
     const emotionRecord = {
-      emotion: newEmotion,
-      intensity: newIntensity,
+      emotion: adjustedEmotion,
+      intensity: adjustedIntensity,
       timestamp: new Date().toISOString(),
       trigger: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
-      significantChange: isSignificantChange
+      significantChange: isSignificantChange,
+      frustrationPattern: frustrationPattern,
+      recommendedAction: recommendedAction
     };
     
     // Update emotional state
@@ -89,31 +111,35 @@ export function EmotionProvider({ children }) {
       // if it's a significant intensity increase for an already negative emotion
       const isNegativeEmotion = ['frustrated', 'angry', 'disappointed', 'worried', 
                                 'concerned', 'confused', 'doubtful', 'annoyed',
-                                'very_negative', 'negative'].includes(newEmotion);
+                                'very_negative', 'negative'].includes(adjustedEmotion);
       
-      const isIntensityIncrease = newIntensity > prevState.intensity;
+      const isIntensityIncrease = adjustedIntensity > prevState.intensity;
       
       const shouldTrackAsSpike = isNegativeSpike || 
-                                (isNegativeEmotion && isIntensityIncrease && intensityChanged);
+                                (isNegativeEmotion && isIntensityIncrease && intensityChanged) ||
+                                (frustrationScore > 0.7); // Also track high frustration scores as spikes
       
       const updatedNegativeSpikes = shouldTrackAsSpike
         ? [...prevState.negativeSpikes, emotionRecord] 
         : prevState.negativeSpikes;
       
       return {
-        currentEmotion: newEmotion,
-        intensity: newIntensity,
+        currentEmotion: adjustedEmotion,
+        intensity: adjustedIntensity,
         history: updatedHistory,
         negativeSpikes: updatedNegativeSpikes
       };
     });
     
     // Log more detailed information about emotion changes
-    console.log(`EmotionContext: Updated emotion from ${emotionalState.currentEmotion} (${emotionalState.intensity}) to ${newEmotion} (${newIntensity}) based on message`);
+    console.log(`EmotionContext: Updated emotion from ${emotionalState.currentEmotion} (${emotionalState.intensity}) to ${adjustedEmotion} (${adjustedIntensity}) based on message`);
     
     // If this is a negative spike, log it with more prominence
-    if (isNegativeSpike) {
-      console.warn(`EmotionContext: ⚠️ NEGATIVE SPIKE DETECTED - ${newEmotion} (${newIntensity}) - Trigger: "${messageContent.substring(0, 100)}..."`);
+    if (isNegativeSpike || frustrationScore > 0.7) {
+      console.warn(`EmotionContext: ⚠️ NEGATIVE SPIKE DETECTED - ${adjustedEmotion} (${adjustedIntensity}) - Trigger: "${messageContent.substring(0, 100)}..."`);
+      if (frustrationPattern) {
+        console.warn(`EmotionContext: 🚨 FRUSTRATION PATTERN: ${frustrationPattern} - Recommended Action: ${recommendedAction}`);
+      }
     }
   };
 
@@ -373,14 +399,184 @@ export function EmotionProvider({ children }) {
     return { newEmotion, newIntensity, isNegativeSpike };
   };
 
+  // Analyze a sequence of messages to detect patterns of frustration
+  const analyzeMessageSequence = (messages, scenario) => {
+    if (!messages || messages.length === 0) {
+      return { 
+        frustrationScore: 0, 
+        frustrationPattern: null, 
+        recommendedAction: null 
+      };
+    }
+    
+    // Only analyze the last 5 messages to focus on recent patterns
+    const recentMessages = messages.slice(-5);
+    const messageContents = recentMessages.map(msg => 
+      typeof msg === 'string' ? msg : msg.content
+    );
+    
+    // Initialize frustration tracking
+    let frustrationScore = 0;
+    let frustrationPattern = null;
+    let recommendedAction = null;
+    
+    // Check for escalating frustration patterns
+    const frustrationKeywords = [
+      'frustrated', 'annoyed', 'disappointed', 'worried', 'concerned',
+      'confused', 'doubtful', 'skeptical', 'expensive', 'cost', 'price',
+      'budget', 'too much', 'high', 'can\'t afford', 'problem', 'issue',
+      'unfortunately', 'not sure', 'hesitant', 'not what we expected'
+    ];
+    
+    // Check for frustration escalation patterns
+    const escalationPatterns = [
+      // Pattern 1: Increasing use of negative words
+      {
+        name: 'increasing negativity',
+        check: (msgs) => {
+          const negativeCounts = msgs.map(msg => 
+            frustrationKeywords.filter(word => msg.toLowerCase().includes(word)).length
+          );
+          return negativeCounts.every((count, i, arr) => 
+            i === 0 || count >= arr[i-1]
+          ) && negativeCounts[negativeCounts.length - 1] > 0;
+        },
+        action: 'Acknowledge their growing concerns and address each point specifically'
+      },
+      // Pattern 2: Repeated questions about the same topic
+      {
+        name: 'repeated questions',
+        check: (msgs) => {
+          const questionTopics = {};
+          msgs.forEach(msg => {
+            const questions = msg.match(/\?/g) || [];
+            if (questions.length > 0) {
+              // Extract topic from question (simplified)
+              const topic = msg.toLowerCase().match(/(what|how|why|when|where|who|which|can|could|would|should|do|does|is|are|was|were)\s+([^?]+)\?/);
+              if (topic && topic[2]) {
+                const topicKey = topic[2].trim();
+                questionTopics[topicKey] = (questionTopics[topicKey] || 0) + 1;
+              }
+            }
+          });
+          return Object.values(questionTopics).some(count => count >= 2);
+        },
+        action: 'Provide more detailed information on the topic they keep asking about'
+      },
+      // Pattern 3: Mentioning alternatives or competitors
+      {
+        name: 'considering alternatives',
+        check: (msgs) => {
+          const alternativeMentions = msgs.filter(msg => 
+            msg.toLowerCase().includes('other venue') || 
+            msg.toLowerCase().includes('elsewhere') || 
+            msg.toLowerCase().includes('competitor') ||
+            msg.toLowerCase().includes('alternative')
+          ).length;
+          return alternativeMentions >= 2;
+        },
+        action: 'Highlight your unique value proposition and address their specific concerns'
+      },
+      // Pattern 4: Expressing time pressure
+      {
+        name: 'time pressure',
+        check: (msgs) => {
+          const timePressureMentions = msgs.filter(msg => 
+            msg.toLowerCase().includes('time') && 
+            (msg.toLowerCase().includes('waste') || 
+             msg.toLowerCase().includes('running out') || 
+             msg.toLowerCase().includes('need to decide') ||
+             msg.toLowerCase().includes('soon'))
+          ).length;
+          return timePressureMentions >= 2;
+        },
+        action: 'Acknowledge their time constraints and offer to expedite the process'
+      },
+      // Pattern 5: Budget concerns escalation
+      {
+        name: 'budget concerns escalation',
+        check: (msgs) => {
+          const budgetMentions = msgs.filter(msg => 
+            msg.toLowerCase().includes('budget') || 
+            msg.toLowerCase().includes('cost') || 
+            msg.toLowerCase().includes('price') ||
+            msg.toLowerCase().includes('expensive') ||
+            msg.toLowerCase().includes('afford')
+          ).length;
+          return budgetMentions >= 3;
+        },
+        action: 'Discuss flexible payment options or highlight the long-term value of your offering'
+      }
+    ];
+    
+    // Check for each pattern
+    for (const pattern of escalationPatterns) {
+      if (pattern.check(messageContents)) {
+        frustrationPattern = pattern.name;
+        recommendedAction = pattern.action;
+        frustrationScore = 0.7; // High frustration score for detected patterns
+        break;
+      }
+    }
+    
+    // If no specific pattern detected, calculate a general frustration score
+    if (!frustrationPattern) {
+      // Count frustration keywords across all messages
+      const totalFrustrationKeywords = messageContents.reduce((count, msg) => {
+        return count + frustrationKeywords.filter(word => msg.toLowerCase().includes(word)).length;
+      }, 0);
+      
+      // Calculate frustration score based on keyword density
+      frustrationScore = Math.min(totalFrustrationKeywords * 0.15, 0.9);
+      
+      // Set default recommendations based on frustration score
+      if (frustrationScore > 0.6) {
+        recommendedAction = 'Acknowledge their concerns and offer specific solutions';
+      } else if (frustrationScore > 0.3) {
+        recommendedAction = 'Show empathy and address their specific points';
+      } else {
+        recommendedAction = 'Continue with positive engagement';
+      }
+    }
+    
+    // Log the sequence analysis
+    console.log(`Message Sequence Analysis:`, {
+      messageCount: messageContents.length,
+      frustrationScore,
+      frustrationPattern,
+      recommendedAction
+    });
+    
+    return { 
+      frustrationScore, 
+      frustrationPattern, 
+      recommendedAction 
+    };
+  };
+
   // Get emotional journey summary
   const getEmotionalJourney = () => {
+    // Extract frustration patterns from history
+    const frustrationPatterns = emotionalState.history
+      .filter(record => record.frustrationPattern)
+      .map(record => ({
+        pattern: record.frustrationPattern,
+        recommendedAction: record.recommendedAction,
+        timestamp: record.timestamp,
+        trigger: record.trigger
+      }));
+    
+    // Get unique frustration patterns
+    const uniquePatterns = [...new Set(frustrationPatterns.map(p => p.pattern))];
+    
     return {
       ...emotionalState,
       averageIntensity: emotionalState.history.reduce((sum, record) => sum + record.intensity, 0) / 
                         (emotionalState.history.length || 1),
       negativeSpikeCount: emotionalState.negativeSpikes.length,
-      emotionChanges: emotionalState.history.length - 1
+      emotionChanges: emotionalState.history.length - 1,
+      frustrationPatterns: uniquePatterns,
+      frustrationDetails: frustrationPatterns
     };
   };
 
