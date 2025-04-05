@@ -1,183 +1,219 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
-import { sendMessageToClaude, createEvaluationPrompt } from '../../services/claudeApiService';
+import { useInteractionTracker } from '../../contexts/InteractionTracker';
+import './FeedbackDisplay.css';
+import { getEmotionColor } from '../../utils/emotionUtils';
 
 const FeedbackDisplay = () => {
-  const navigate = useNavigate();
-  const { currentScenario, chatHistory, feedback, setFeedback, resetSimulation } = useSimulator();
-  const [score, setScore] = useState(0);
+  const { feedback, currentScenario } = useSimulator();
+  const { getAllInteractions } = useInteractionTracker();
+  const [parsedFeedback, setParsedFeedback] = useState({
+    issues: [],
+    strengths: [],
+    score: 0,
+    detailedFeedback: ''
+  });
+  const [interactions, setInteractions] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+  
   useEffect(() => {
-    // If no scenario is available, redirect to simulator home
-    if (!currentScenario) {
-      navigate('/simulator');
-      return;
-    }
-
-    // Generate feedback if not already available
-    const generateFeedback = async () => {
-      if (!feedback && chatHistory.length > 0) {
-        setIsLoading(true);
-        try {
-          // Create evaluation prompt
-          const evaluationPrompt = createEvaluationPrompt(currentScenario, chatHistory);
-          
-          // Send to Claude API for evaluation
-          const response = await sendMessageToClaude(
-            "You are an expert sales coach evaluating a sales conversation. Provide detailed, constructive feedback.",
-            [{ role: "user", content: evaluationPrompt }],
-            { 
-              temperature: 0.3, 
-              max_tokens: 1500,
-              requestType: 'evaluation',
-              model: process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229' // Use the same model as other requests
-            }
-          );
-          
-          // Extract feedback from Claude's response
-          let feedbackContent = '';
-          
-          // Handle different response structures
-          if (response && response.content && Array.isArray(response.content) && response.content.length > 0) {
-            if (response.content[0].text) {
-              feedbackContent = response.content[0].text;
-            } else if (response.content[0].type === 'text') {
-              feedbackContent = response.content[0].text;
-            }
-          } else if (response && response.message && response.message.content) {
-            feedbackContent = response.message.content;
-          } else if (response && typeof response === 'string') {
-            feedbackContent = response;
-          } else if (response && response.choices && response.choices.length > 0) {
-            feedbackContent = response.choices[0].message.content;
-          } else {
-            console.error("Unexpected feedback response structure:", response);
-            feedbackContent = "I'm sorry, I couldn't generate detailed feedback at this time. Here's a basic assessment based on the conversation length and content.";
-          }
-          
-          // Save the feedback
-          setFeedback(feedbackContent);
-          
-          // Extract score - look for a percentage in the feedback
-          const scoreMatch = feedbackContent.match(/(\d{1,3})%/);
-          if (scoreMatch && scoreMatch[1]) {
-            setScore(parseInt(scoreMatch[1]));
-          } else {
-            // Fallback to calculating a basic score
-            setScore(calculateBasicScore(chatHistory));
-          }
-        } catch (err) {
-          console.error("Error generating feedback:", err);
-          setError(`Failed to generate feedback: ${err.message}`);
-          
-          // Provide a fallback feedback message
-          const fallbackFeedback = `I'm sorry, I couldn't generate detailed feedback at this time. Here's a basic assessment based on the conversation length and content.
-
-Score: ${calculateBasicScore(chatHistory)}%
-Feedback: Based on the conversation, you demonstrated good communication skills. To improve, consider asking more specific questions about the couple's preferences and providing clearer next steps.`;
-          
-          setFeedback(fallbackFeedback);
-          setScore(calculateBasicScore(chatHistory));
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
+    if (feedback) {
+      setIsLoading(true);
+      try {
+        // Parse the feedback to extract issues, strengths, score, and detailed feedback
+        const issuesMatch = feedback.rawResponse?.match(/Issues:?\s*([\s\S]*?)(?=Strengths:|Score:|$)/i);
+        const strengthsMatch = feedback.rawResponse?.match(/Strengths:?\s*([\s\S]*?)(?=Score:|$)/i);
+        const scoreMatch = feedback.rawResponse?.match(/Score:\s*(\d+)%/i);
+        const feedbackMatch = feedback.rawResponse?.match(/Feedback:?\s*([\s\S]*?)$/i);
+        
+        const issues = issuesMatch ? issuesMatch[1].trim().split('\n').filter(line => line.trim()) : [];
+        const strengths = strengthsMatch ? strengthsMatch[1].trim().split('\n').filter(line => line.trim()) : [];
+        const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+        const detailedFeedback = feedbackMatch ? feedbackMatch[1].trim() : '';
+        
+        setParsedFeedback({
+          issues,
+          strengths,
+          score,
+          detailedFeedback
+        });
+        
+        // Get tracked interactions
+        setInteractions(getAllInteractions());
+      } catch (error) {
+        console.error('Error parsing feedback:', error);
+        setParsedFeedback({
+          issues: [],
+          strengths: [],
+          score: 0,
+          detailedFeedback: 'Error parsing feedback data'
+        });
+      } finally {
         setIsLoading(false);
       }
-    };
-    
-    generateFeedback();
-  }, [currentScenario, chatHistory, feedback, navigate, setFeedback]);
+    }
+  }, [feedback, getAllInteractions]);
 
-  // Calculate a basic score based on chat history as a fallback
-  const calculateBasicScore = (chatHistory) => {
-    // Basic calculation based on conversation length and user message length
-    const userMessages = chatHistory.filter(msg => msg.type === 'user');
-    const avgLength = userMessages.reduce((sum, msg) => sum + msg.content.length, 0) / (userMessages.length || 1);
-    
-    // Higher score for more detailed responses
-    let baseScore = Math.min(70 + (avgLength / 20), 90);
-    
-    // Penalize very short conversations
-    if (chatHistory.length < 4) baseScore = Math.max(baseScore - 20, 50);
-    
-    return Math.round(baseScore);
-  };
-
-  const handleStartNewSimulation = () => {
-    resetSimulation();
-    navigate('/simulator');
-  };
-
-  // If no scenario is available, redirect to simulator home
-  if (!currentScenario) {
-    navigate('/simulator');
-    return null;
+  if (!feedback || !currentScenario) {
+    return (
+      <div className="feedback-container">
+        <div className="feedback-error">
+          <h2>No Feedback Available</h2>
+          <p>Please complete a simulation to view feedback.</p>
+        </div>
+      </div>
+    );
   }
 
+  if (isLoading) {
+    return (
+      <div className="feedback-container">
+        <div className="feedback-loading">
+          <h2>Loading Feedback...</h2>
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const renderInteraction = (interaction) => {
+    if (typeof interaction === 'string') {
+      return interaction;
+    }
+    
+    return (
+      <div className="interaction-item">
+        <p className="interaction-description">{interaction.description}</p>
+        {interaction.effectiveness && (
+          <p className="interaction-effectiveness">Effectiveness: {interaction.effectiveness}</p>
+        )}
+        {interaction.impact && (
+          <p className="interaction-impact">Impact: {interaction.impact}</p>
+        )}
+        {interaction.context && (
+          <p className="interaction-context">Context: {interaction.context}</p>
+        )}
+        {interaction.trigger && (
+          <p className="interaction-trigger">Trigger: "{interaction.trigger}"</p>
+        )}
+      </div>
+    );
+  };
+
   const getScoreColor = (score) => {
-    if (score >= 90) return 'text-green-600';
-    if (score >= 70) return 'text-blue-600';
-    if (score >= 50) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 80) return 'green';
+    if (score >= 60) return 'orange';
+    return 'red';
+  };
+
+  const getImpactColor = (impact) => {
+    switch (impact.toLowerCase()) {
+      case 'high':
+        return 'red';
+      case 'medium':
+        return 'orange';
+      case 'low':
+        return 'yellow';
+      case 'positive':
+        return 'green';
+      default:
+        return 'gray';
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-4">Simulation Results</h2>
-        
-        {/* Scenario Info */}
-        <div className="mb-6">
-          <h3 className="text-xl font-semibold mb-2">{currentScenario.title}</h3>
-          <p className="text-gray-600">{currentScenario.description}</p>
-        </div>
-
-        {/* Score Display */}
-        <div className="mb-6">
-          <h3 className="text-xl font-semibold mb-2">Performance Score</h3>
-          <div className={`text-4xl font-bold ${getScoreColor(score)}`}>
-            {score}%
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          </div>
-        )}
-
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
-          </div>
-        )}
-
-        {/* Feedback Display */}
-        {!isLoading && !error && feedback && (
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4">Feedback</h3>
-            <div className="prose max-w-none">
-              {feedback.split('\n').map((paragraph, index) => (
-                <p key={index} className="mb-4">{paragraph}</p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Start New Simulation Button */}
-        <button
-          onClick={handleStartNewSimulation}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
-        >
-          Start New Simulation
-        </button>
+    <div className="feedback-container">
+      <h2>Simulation Feedback</h2>
+      
+      <div className="feedback-score" style={{ color: getEmotionColor(parsedFeedback.score >= 70 ? 'happy' : parsedFeedback.score >= 50 ? 'neutral' : 'sad') }}>
+        <h3>Overall Score: {parsedFeedback.score}%</h3>
       </div>
+
+      {parsedFeedback.issues.length > 0 && (
+        <div className="feedback-section">
+          <h3>Areas for Improvement</h3>
+          <ul>
+            {parsedFeedback.issues.map((issue, index) => (
+              <li key={index}>{issue}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {parsedFeedback.strengths.length > 0 && (
+        <div className="feedback-section">
+          <h3>Strengths</h3>
+          <ul>
+            {parsedFeedback.strengths.map((strength, index) => (
+              <li key={index}>{strength}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {parsedFeedback.detailedFeedback && (
+        <div className="feedback-section">
+          <h3>Detailed Feedback</h3>
+          <p>{parsedFeedback.detailedFeedback}</p>
+        </div>
+      )}
+
+      {interactions && (
+        <div className="feedback-section">
+          <h3>Interaction Analysis</h3>
+          
+          {interactions.negativeInteractions.length > 0 && (
+            <div className="interaction-group">
+              <h4>Negative Interactions</h4>
+              <ul>
+                {interactions.negativeInteractions.map((interaction, index) => (
+                  <li key={index}>{renderInteraction(interaction)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {interactions.missedOpportunities.length > 0 && (
+            <div className="interaction-group">
+              <h4>Missed Opportunities</h4>
+              <ul>
+                {interactions.missedOpportunities.map((opportunity, index) => (
+                  <li key={index}>{renderInteraction(opportunity)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {interactions.rapportBuilding.length > 0 && (
+            <div className="interaction-group">
+              <h4>Rapport Building Moments</h4>
+              <ul>
+                {interactions.rapportBuilding.map((moment, index) => (
+                  <li key={index}>{renderInteraction(moment)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {interactions.closingAttempts.length > 0 && (
+            <div className="interaction-group">
+              <h4>Closing Attempts</h4>
+              <ul>
+                {interactions.closingAttempts.map((attempt, index) => (
+                  <li key={index}>{renderInteraction(attempt)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {currentScenario.goldStandard && (
+        <div className="feedback-section">
+          <h3>Gold Standard Comparison</h3>
+          <p>{currentScenario.goldStandard}</p>
+        </div>
+      )}
     </div>
   );
 };

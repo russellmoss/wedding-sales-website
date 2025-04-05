@@ -39,11 +39,8 @@ const SimulatorBrief = () => {
       return;
     }
     
-    // Make a deep copy of the scenario to ensure it's properly passed
-    const scenarioCopy = JSON.parse(JSON.stringify(scenario));
-    console.log("Scenario copy:", scenarioCopy);
-    
-    startSimulation(scenarioCopy);
+    // Pass the scenario ID instead of the entire object
+    startSimulation(scenario.id);
     navigate('/simulator/chat');
   };
 

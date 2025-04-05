@@ -1,0 +1,180 @@
+.feedback-display {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+}
+
+.feedback-display h2 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.feedback-display h3 {
+  color: #34495e;
+  margin: 15px 0;
+  font-size: 20px;
+}
+
+.feedback-display h4 {
+  color: #2c3e50;
+  margin: 10px 0;
+  font-size: 18px;
+}
+
+.score-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.score {
+  font-size: 48px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.issues-section, .strengths-section {
+  margin-bottom: 25px;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.issues-section {
+  background-color: #fff5f5;
+  border-left: 4px solid #e53e3e;
+}
+
+.strengths-section {
+  background-color: #f0fff4;
+  border-left: 4px solid #38a169;
+}
+
+.issues-list, .strengths-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.issue-item, .strength-item {
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background-color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.issue-item {
+  border-left: 3px solid #e53e3e;
+}
+
+.strength-item {
+  border-left: 3px solid #38a169;
+}
+
+.feedback-section {
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.interactions-section {
+  margin-top: 30px;
+}
+
+.interaction-group {
+  margin-bottom: 25px;
+}
+
+.interaction-group ul {
+  list-style: none;
+  padding: 0;
+}
+
+.interaction-group li {
+  background-color: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.interaction-group li strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #2c3e50;
+}
+
+.interaction-group li p {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Gold Standard Comparison Styles */
+.gold-standard-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  border-left: 4px solid #3182ce;
+}
+
+.gold-standard-score {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.deviations-section {
+  margin-top: 20px;
+}
+
+.deviations-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.deviations-section li {
+  background-color: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.deviations-section li strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #2c3e50;
+}
+
+.deviations-section li p {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Color indicators for impact levels */
+.interaction-group li[style*="border-left: 4px solid red"] {
+  background-color: #fff5f5;
+}
+
+.interaction-group li[style*="border-left: 4px solid orange"] {
+  background-color: #fff7e6;
+}
+
+.interaction-group li[style*="border-left: 4px solid yellow"] {
+  background-color: #fffff0;
+}
+
+.interaction-group li[style*="border-left: 4px solid green"] {
+  background-color: #f0fff4;
+}
+
+.interaction-group li[style*="border-left: 4px solid gray"] {
+  background-color: #f8f9fa;
+} 

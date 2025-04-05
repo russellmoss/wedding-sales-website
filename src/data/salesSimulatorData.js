@@ -19,31 +19,42 @@ export const salesSimulatorScenarios = [
     evaluationCriteria: {
       responseTime: {
         description: "Acknowledged the importance of responding quickly",
-        weight: 10
+        weight: 10,
+        dealBreaker: false
       },
       personalization: {
         description: "Used the couple's names and personalized the response",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       warmth: {
         description: "Demonstrated genuine enthusiasm and warmth",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
+      },
+      tone: {
+        description: "Maintained professional yet friendly tone throughout",
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       informationGathering: {
         description: "Asked appropriate qualification questions about vision, guest count, and date preferences",
-        weight: 20
+        weight: 20,
+        dealBreaker: false
       },
       callToAction: {
         description: "Provided a clear next step (typically scheduling a tour)",
-        weight: 20
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       followUpPlan: {
         description: "Mentioned a specific follow-up plan if they don't respond",
-        weight: 10
-      },
-      communicationOptions: {
-        description: "Provided multiple ways to communicate (email, phone, text)",
-        weight: 10
+        weight: 10,
+        dealBreaker: false
       }
     },
     stageFunnel: "top-funnel",
@@ -69,31 +80,41 @@ export const salesSimulatorScenarios = [
     evaluationCriteria: {
       preparation: {
         description: "Reviewed their inquiry details before the call",
-        weight: 10
+        weight: 10,
+        dealBreaker: false
       },
       rapport: {
         description: "Established a comfortable conversation flow",
-        weight: 15
+        weight: 20,
+        dealBreaker: true,
+        minimumScore: 60
+      },
+      tone: {
+        description: "Maintained professional yet warm tone throughout",
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       questionQuality: {
         description: "Asked open-ended questions to gather information",
-        weight: 20
+        weight: 20,
+        dealBreaker: false
       },
       activeListening: {
         description: "Demonstrated active listening and acknowledged their responses",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       budgetDiscussion: {
         description: "Addressed budget concerns professionally",
-        weight: 20
+        weight: 20,
+        dealBreaker: false
       },
       valueProposition: {
         description: "Highlighted venue features that match their needs",
-        weight: 10
-      },
-      nextSteps: {
-        description: "Clearly outlined next steps in the process",
-        weight: 10
+        weight: 10,
+        dealBreaker: false
       }
     },
     stageFunnel: "middle-funnel",
@@ -119,31 +140,36 @@ export const salesSimulatorScenarios = [
     evaluationCriteria: {
       preparation: {
         description: "Prepared the venue for the tour",
-        weight: 10
+        weight: 10,
+        dealBreaker: false
       },
       welcome: {
         description: "Created a warm, welcoming atmosphere",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
+      },
+      rapport: {
+        description: "Built and maintained rapport throughout the tour",
+        weight: 20,
+        dealBreaker: true,
+        minimumScore: 60
       },
       storytelling: {
         description: "Used storytelling to highlight venue features",
-        weight: 20
+        weight: 20,
+        dealBreaker: false
       },
       personalization: {
         description: "Tailored the tour to their specific interests",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       questionHandling: {
         description: "Addressed their questions confidently",
-        weight: 20
-      },
-      visualization: {
-        description: "Helped them visualize their wedding at the venue",
-        weight: 10
-      },
-      nextSteps: {
-        description: "Clearly outlined next steps after the tour",
-        weight: 10
+        weight: 20,
+        dealBreaker: false
       }
     },
     stageFunnel: "middle-funnel",
@@ -169,31 +195,37 @@ export const salesSimulatorScenarios = [
     evaluationCriteria: {
       proposalQuality: {
         description: "Created a comprehensive, customized proposal",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
       },
       presentation: {
         description: "Delivered the proposal confidently and clearly",
-        weight: 15
+        weight: 15,
+        dealBreaker: true,
+        minimumScore: 60
+      },
+      rapport: {
+        description: "Maintained strong rapport throughout presentation",
+        weight: 20,
+        dealBreaker: true,
+        minimumScore: 60
       },
       valueFocus: {
         description: "Emphasized value rather than just price",
-        weight: 20
+        weight: 20,
+        dealBreaker: false
       },
       objectionHandling: {
         description: "Addressed concerns professionally",
-        weight: 20
-      },
-      urgency: {
-        description: "Created appropriate urgency without pressure",
-        weight: 10
+        weight: 20,
+        dealBreaker: false
       },
       closing: {
         description: "Asked for the booking confidently",
-        weight: 10
-      },
-      followUp: {
-        description: "Established a clear follow-up plan",
-        weight: 10
+        weight: 10,
+        dealBreaker: true,
+        minimumScore: 60
       }
     },
     stageFunnel: "bottom-funnel",

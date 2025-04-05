@@ -2,15 +2,31 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { sendMessageToClaude, createScenarioSystemPrompt } from '../../services/claudeApiService';
+import { useEmotion } from '../../contexts/EmotionContext';
 
 const SimulatorChat = () => {
   const navigate = useNavigate();
-  const { currentScenario, chatHistory, addMessage, endSimulation } = useSimulator();
-  const [message, setMessage] = useState('');
+  const { 
+    currentScenario, 
+    chatHistory, 
+    addMessage, 
+    endSimulation,
+    isSimulationActive,
+    getEmotionalJourney,
+    isLoading: simulatorLoading,
+    error: simulatorError
+  } = useSimulator();
+  
+  const { currentEmotion, emotionIntensity } = useEmotion();
+  const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const messagesEndRef = useRef(null);
+  const [localLoading, setLocalLoading] = useState(true);
+  const [localError, setLocalError] = useState(null);
+  const chatEndRef = useRef(null);
+  
+  // Combine local and context loading states
+  const isLoading = localLoading || simulatorLoading;
+  const error = localError || simulatorError;
 
   useEffect(() => {
     // Debug log to see what's in currentScenario
@@ -22,16 +38,44 @@ const SimulatorChat = () => {
       navigate('/simulator');
       return;
     }
-    setIsLoading(false);
+    setLocalLoading(false);
   }, [currentScenario, navigate]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory]);
+
+  // Update typing indicator based on chat history changes
+  useEffect(() => {
+    // If the last message is from the assistant, we're not typing anymore
+    if (chatHistory.length > 0 && chatHistory[chatHistory.length - 1].type === 'assistant') {
+      setIsTyping(false);
+    }
+    
+    // If there's an error, we should also stop typing
+    if (error) {
+      setIsTyping(false);
+    }
+    
+    // Add a safety timeout to reset typing indicator if it gets stuck
+    let typingTimeout;
+    if (isTyping) {
+      typingTimeout = setTimeout(() => {
+        console.log("Typing indicator reset due to timeout");
+        setIsTyping(false);
+      }, 10000); // 10 seconds timeout
+    }
+    
+    return () => {
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+    };
+  }, [chatHistory, error, isTyping]);
 
   // Send initial message from AI if chat is empty
   useEffect(() => {
@@ -56,13 +100,13 @@ const SimulatorChat = () => {
             content: initialMessage.content,
             timestamp: new Date().toISOString()
           };
-          addMessage(userMessage);
+          addMessage(userMessage, 'user', false);
           
           // We don't send this to Claude yet - the user will respond first
           console.log("Initial customer inquiry added. Waiting for user response.");
         } catch (err) {
           console.error("Error initiating chat:", err);
-          setError(`Failed to start conversation: ${err.message}`);
+          setLocalError(`Failed to start conversation: ${err.message}`);
           
           // Add fallback error message
           const errorResponse = {
@@ -82,116 +126,66 @@ const SimulatorChat = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!inputValue.trim()) return;
 
-    // Add user message to chat
+    // Add user message to chat and generate a response
     const userMessage = {
       type: 'user',
-      content: message,
+      content: inputValue,
       timestamp: new Date().toISOString()
     };
-    addMessage(userMessage);
-    setMessage('');
+    
+    // Set typing indicator before adding the message
     setIsTyping(true);
-
+    
     try {
-      // Create system prompt based on scenario
-      const systemPrompt = createScenarioSystemPrompt(currentScenario);
-      
-      // Convert chat history to format expected by Claude API
-      const formattedHistory = chatHistory.map(msg => ({
-        role: msg.type === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }));
-      
-      // Add the newest user message
-      formattedHistory.push({
-        role: 'user',
-        content: userMessage.content
-      });
-      
-      console.log("Sending message to Claude with history:", formattedHistory);
-      
-      // Send to Claude API
-      const response = await sendMessageToClaude(
-        systemPrompt,
-        formattedHistory,
-        { 
-          temperature: 0.8,
-          requestType: 'chat-message',
-          model: process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229'
-        }
-      );
-      
-      console.log("Claude API response:", response);
-      
-      // Extract the AI's response text from the response structure
-      let aiResponseText = '';
-      
-      // Handle different possible response structures
-      if (response && response.content && Array.isArray(response.content) && response.content.length > 0) {
-        // New Claude API structure
-        if (response.content[0].text) {
-          aiResponseText = response.content[0].text;
-        } else if (response.content[0].type === 'text') {
-          aiResponseText = response.content[0].text;
-        }
-      } else if (response && response.message && response.message.content) {
-        // Alternative structure
-        aiResponseText = response.message.content;
-      } else if (response && typeof response === 'string') {
-        // Direct string response
-        aiResponseText = response;
-      } else if (response && response.choices && response.choices.length > 0) {
-        // OpenAI-style structure
-        aiResponseText = response.choices[0].message.content;
-      } else {
-        // Fallback - try to extract any text content
-        console.error("Unexpected response structure:", response);
-        aiResponseText = "I'm having trouble understanding. Could you please rephrase that?";
-      }
-      
-      console.log("Extracted AI response text:", aiResponseText);
-      
-      // Check if the response contains evaluation feedback
-      if (aiResponseText.includes("Score:") || aiResponseText.includes("Feedback:")) {
-        console.log("AI response contains evaluation feedback. This should not happen during the conversation.");
-        // Extract just the customer response part if possible
-        const customerResponseMatch = aiResponseText.match(/\*responds as the customer\*\s*([\s\S]*?)(?=\*evaluates|$)/i);
-        if (customerResponseMatch && customerResponseMatch[1]) {
-          aiResponseText = customerResponseMatch[1].trim();
-        } else {
-          // If we can't extract just the customer response, use a fallback
-          aiResponseText = "Thank you for your interest in Milea Estate Vineyard! I'd be happy to tell you about our venue. What aspects are you most interested in learning about?";
-        }
-      }
-      
-      // Add Claude's response to chat history
-      const aiResponse = {
-        type: 'ai',
-        content: aiResponseText,
-        timestamp: new Date().toISOString()
-      };
-      addMessage(aiResponse);
+      // Add the message and generate a response
+      await addMessage(userMessage, 'user', true);
+      setInputValue('');
     } catch (err) {
-      console.error("Error sending message to Claude:", err);
-      setError(`Failed to get response: ${err.message}`);
-      
-      // Add fallback error message
-      const errorResponse = {
-        type: 'ai',
-        content: "I'm sorry, I'm having trouble responding right now. Could you please try again?",
-        timestamp: new Date().toISOString()
-      };
-      addMessage(errorResponse);
-    } finally {
+      console.error('Error sending message:', err);
+      setLocalError('Failed to send message. Please try again.');
       setIsTyping(false);
     }
   };
 
-  const handleEndSimulation = () => {
-    endSimulation();
-    navigate('/simulator/feedback');
+  const handleEndSimulation = async () => {
+    try {
+      setLocalLoading(true);
+      await endSimulation();
+      navigate('/simulator/feedback');
+    } catch (err) {
+      console.error('Error ending simulation:', err);
+      setLocalError('Failed to generate feedback. Please try again.');
+      setLocalLoading(false);
+    }
+  };
+
+  const renderEmotionIndicator = () => {
+    if (!isSimulationActive) return null;
+    
+    const emotionColor = getEmotionColor(currentEmotion);
+    const intensityPercent = Math.round(emotionIntensity * 100);
+    
+    return (
+      <div className="emotion-indicator">
+        <div className="emotion-label">
+          Customer Emotion: <span style={{ color: emotionColor }}>{currentEmotion}</span>
+        </div>
+        <div className="emotion-intensity">
+          Intensity: {intensityPercent}%
+          <div className="intensity-bar">
+            <div 
+              className="intensity-fill" 
+              style={{ 
+                width: `${intensityPercent}%`,
+                backgroundColor: emotionColor
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // If no scenario is available, show error
@@ -228,6 +222,7 @@ const SimulatorChat = () => {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-xl font-semibold text-gray-900">{currentScenario.title}</h1>
           <p className="text-sm text-gray-600">{currentScenario.description}</p>
+          {renderEmotionIndicator()}
         </div>
       </div>
 
@@ -250,6 +245,17 @@ const SimulatorChat = () => {
                 <p className="text-xs mt-2 opacity-75">
                   {new Date(msg.timestamp).toLocaleTimeString()}
                 </p>
+                {msg.type === 'assistant' && (
+                  <div className="message-emotion">
+                    <span className="emotion-label">Emotion:</span>
+                    <span 
+                      className="emotion-value"
+                      style={{ color: getEmotionColor(msg.emotion) }}
+                    >
+                      {msg.emotion || 'neutral'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -264,7 +270,7 @@ const SimulatorChat = () => {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={chatEndRef} />
         </div>
       </div>
 
@@ -281,18 +287,18 @@ const SimulatorChat = () => {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="flex space-x-2">
             <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your message... (Press Shift+Enter for new line)"
               className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows="3"
-              disabled={isTyping}
+              disabled={!isSimulationActive}
             />
             <button
               type="submit"
               className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50"
-              disabled={isTyping || !message.trim()}
+              disabled={!isSimulationActive || !inputValue.trim()}
             >
               Send
             </button>
@@ -305,14 +311,80 @@ const SimulatorChat = () => {
         <div className="max-w-4xl mx-auto flex justify-end">
           <button
             onClick={handleEndSimulation}
-            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
+            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center"
+            disabled={isLoading}
           >
-            End Simulation
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Processing...
+              </>
+            ) : (
+              'End Simulation'
+            )}
           </button>
         </div>
       </div>
     </div>
   );
+};
+
+// Helper function to get color based on emotion
+const getEmotionColor = (emotion) => {
+  // Return a default color if emotion is undefined or null
+  if (!emotion) {
+    return '#9E9E9E'; // Default grey color
+  }
+  
+  switch (emotion.toLowerCase()) {
+    // Positive emotions
+    case 'happy':
+    case 'excited':
+    case 'enthusiastic':
+    case 'delighted':
+    case 'pleased':
+      return '#4CAF50'; // Green
+    case 'hopeful':
+    case 'optimistic':
+    case 'confident':
+      return '#FF9800'; // Orange
+    case 'curious':
+    case 'interested':
+    case 'engaged':
+      return '#9C27B0'; // Purple
+    case 'grateful':
+    case 'appreciative':
+      return '#00BCD4'; // Cyan
+      
+    // Neutral emotions
+    case 'neutral':
+    case 'calm':
+    case 'composed':
+      return '#9E9E9E'; // Grey
+      
+    // Negative emotions
+    case 'concerned':
+    case 'worried':
+    case 'anxious':
+      return '#FFC107'; // Yellow
+    case 'frustrated':
+    case 'angry':
+    case 'irritated':
+    case 'annoyed':
+      return '#F44336'; // Red
+    case 'sad':
+    case 'disappointed':
+    case 'unhappy':
+      return '#2196F3'; // Blue
+    case 'confused':
+    case 'uncertain':
+      return '#795548'; // Brown
+    case 'impatient':
+    case 'rushed':
+      return '#E91E63'; // Pink
+    default:
+      return '#9E9E9E'; // Default grey color
+  }
 };
 
 export default SimulatorChat; 
