@@ -150,7 +150,7 @@ export function EmotionProvider({ children }) {
     let newIntensity = currentIntensity;
     let isNegativeSpike = false;
     
-    // Check for emotional keywords
+    // Check for emotional keywords with word boundary matching
     const positiveKeywords = [
       'thank', 'appreciate', 'excited', 'happy', 'love', 'great', 'perfect', 
       'beautiful', 'amazing', 'wonderful', 'fantastic', 'excellent', 'pleased',
@@ -170,53 +170,103 @@ export function EmotionProvider({ children }) {
       'would', 'should', 'need', 'want', 'looking', 'searching', 'finding'
     ];
     
-    // Check for negative phrases that indicate frustration
+    // Check for negative phrases that indicate frustration with context
     const negativePatterns = [
-      'i\'m surprised', 'i am surprised', 
-      'i\'m frustrated', 'i am frustrated',
-      'we\'ll need to', 'we will need to',
-      'focus on other', 'look elsewhere',
-      'out of our budget', 'beyond our budget',
-      'too expensive', 'can\'t work with',
-      'can not work with', 'difficult to work with',
-      'not what we\'re looking for', 'not what we are looking for',
-      'disappointed', 'not impressed',
-      'wasting', 'waste of', 'time',
-      'moving on', 'thank you for your time'
+      { pattern: 'i\'m surprised', context: 'response_time' },
+      { pattern: 'i am surprised', context: 'response_time' },
+      { pattern: 'i\'m frustrated', context: 'general' },
+      { pattern: 'i am frustrated', context: 'general' },
+      { pattern: 'we\'ll need to', context: 'budget' },
+      { pattern: 'we will need to', context: 'budget' },
+      { pattern: 'focus on other', context: 'competition' },
+      { pattern: 'look elsewhere', context: 'competition' },
+      { pattern: 'out of our budget', context: 'budget' },
+      { pattern: 'beyond our budget', context: 'budget' },
+      { pattern: 'too expensive', context: 'budget' },
+      { pattern: 'can\'t work with', context: 'service' },
+      { pattern: 'can not work with', context: 'service' },
+      { pattern: 'difficult to work with', context: 'service' },
+      { pattern: 'not what we\'re looking for', context: 'expectations' },
+      { pattern: 'not what we are looking for', context: 'expectations' },
+      { pattern: 'disappointed', context: 'general' },
+      { pattern: 'not impressed', context: 'general' },
+      { pattern: 'wasting', context: 'time' },
+      { pattern: 'waste of', context: 'time' },
+      { pattern: 'moving on', context: 'general' },
+      { pattern: 'thank you for your time', context: 'closing' }
     ];
     
-    // Count keyword matches with weighted significance
-    let positiveCount = positiveKeywords.filter(word => messageLower.includes(word)).length;
-    let negativeCount = negativeKeywords.filter(word => messageLower.includes(word)).length;
-    const neutralCount = neutralKeywords.filter(word => messageLower.includes(word)).length;
+    // Count keyword matches with word boundary checking
+    const countKeywordMatches = (text, keywords) => {
+      return keywords.reduce((count, keyword) => {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+        return count + (text.match(regex) || []).length;
+      }, 0);
+    };
     
-    // Check for negative patterns (these are stronger signals of frustration)
-    const negativePatternCount = negativePatterns.filter(pattern => messageLower.includes(pattern)).length;
-    negativeCount += negativePatternCount * 2; // Weigh patterns more heavily
+    let positiveCount = countKeywordMatches(messageLower, positiveKeywords);
+    let negativeCount = countKeywordMatches(messageLower, negativeKeywords);
+    const neutralCount = countKeywordMatches(messageLower, neutralKeywords);
+    
+    // Check for negative patterns with context
+    const matchedPatterns = negativePatterns
+      .filter(({ pattern }) => messageLower.includes(pattern))
+      .map(({ pattern, context }) => ({ pattern, context }));
+    
+    // Weight patterns based on context and scenario
+    const patternWeights = {
+      response_time: scenario?.id === 'initial-inquiry' ? 2 : 1,
+      budget: scenario?.id === 'proposal-presentation' ? 2 : 1,
+      competition: scenario?.id === 'venue-tour' ? 2 : 1,
+      service: 1.5,
+      expectations: 1.5,
+      time: 1.2,
+      general: 1,
+      closing: 2
+    };
+    
+    negativeCount += matchedPatterns.reduce((count, { context }) => 
+      count + (patternWeights[context] || 1), 0);
     
     // Check for question marks (can indicate confusion or concern)
     const questionCount = (messageLower.match(/\?/g) || []).length;
     if (questionCount > 1) {
-      negativeCount += 1; // Multiple questions might indicate confusion or concern
+      negativeCount += Math.min(questionCount * 0.5, 2); // Cap the impact
     }
     
-    // Check for exclamation marks (can indicate strong emotion)
+    // Check for exclamation marks with context
     const exclamationCount = (messageLower.match(/!/g) || []).length;
     if (exclamationCount > 0) {
-      // Could be positive or negative - check context
-      if (negativeCount > positiveCount) {
-        negativeCount += exclamationCount; // Amplify negative emotion
+      // Check surrounding context for emotion
+      const exclamationContext = messageLower.split('!').map(part => part.trim());
+      const isNegativeContext = exclamationContext.some(part => 
+        negativeKeywords.some(word => part.includes(word))
+      );
+      
+      if (isNegativeContext) {
+        negativeCount += Math.min(exclamationCount * 0.8, 2);
       } else if (positiveCount > negativeCount) {
-        positiveCount += exclamationCount; // Amplify positive emotion
+        positiveCount += Math.min(exclamationCount * 0.8, 2);
       }
     }
     
-    // Determine emotion change
-    if (positiveCount > negativeCount && positiveCount > neutralCount) {
+    // Normalize counts to prevent extreme values
+    const totalCount = positiveCount + negativeCount + neutralCount;
+    if (totalCount > 0) {
+      positiveCount = positiveCount / totalCount;
+      negativeCount = negativeCount / totalCount;
+    }
+    
+    // Determine emotion change with hysteresis
+    const emotionChangeThreshold = 0.2; // Minimum change required
+    const currentEmotionIsPositive = ['happy', 'excited', 'pleased', 'interested', 'hopeful'].includes(currentEmotion);
+    const currentEmotionIsNegative = ['frustrated', 'angry', 'disappointed', 'worried', 'concerned'].includes(currentEmotion);
+    
+    if (positiveCount > negativeCount + emotionChangeThreshold) {
       // Positive emotion - categorize more specifically
-      if (positiveCount > 3) {
+      if (positiveCount > 0.6) {
         newEmotion = 'excited';
-        newIntensity = Math.min(currentIntensity + 0.2, 1.0);
+        newIntensity = Math.min(currentIntensity + 0.15, 1.0);
       } else if (messageLower.includes('interest') || messageLower.includes('curious')) {
         newEmotion = 'interested';
         newIntensity = Math.min(currentIntensity + 0.1, 0.8);
@@ -224,14 +274,13 @@ export function EmotionProvider({ children }) {
         newEmotion = 'pleased';
         newIntensity = Math.min(currentIntensity + 0.1, 0.9);
       }
-    } else if (negativeCount > 0 && negativePatternCount > 0) {
-      // Strong negative signals detected (pattern match + keywords)
-      newEmotion = 'frustrated';
-      newIntensity = Math.min(0.7 + (negativePatternCount * 0.1), 1.0);
-      isNegativeSpike = true;
-    } else if (negativeCount > positiveCount && negativeCount > neutralCount) {
+    } else if (negativeCount > positiveCount + emotionChangeThreshold) {
       // Negative emotion - categorize more specifically
-      if (negativeCount > 3) {
+      if (matchedPatterns.length > 0) {
+        newEmotion = 'frustrated';
+        newIntensity = Math.min(0.7 + (matchedPatterns.length * 0.1), 1.0);
+        isNegativeSpike = true;
+      } else if (negativeCount > 0.6) {
         if (messageLower.includes('pass') || messageLower.includes('other venue') || 
             messageLower.includes('elsewhere') || messageLower.includes('too expensive')) {
           newEmotion = 'disappointed';
@@ -252,13 +301,13 @@ export function EmotionProvider({ children }) {
         newIntensity = 0.5;
       }
     } else {
-      // Neutral or mixed emotion
-      newEmotion = 'neutral';
-      newIntensity = 0.5;
+      // Maintain current emotion if change is not significant
+      newEmotion = currentEmotion;
+      newIntensity = currentIntensity;
     }
     
     // Adjust based on scenario-specific triggers
-    if (scenario.id === 'initial-inquiry') {
+    if (scenario?.id === 'initial-inquiry') {
       // For initial inquiry, check for personalization
       if (messageLower.includes(scenario.clientPersonality?.name?.toLowerCase()?.split(' ')[0])) {
         newEmotion = 'pleased';
@@ -272,7 +321,7 @@ export function EmotionProvider({ children }) {
           newIntensity = Math.max(currentIntensity - 0.1, 0.4);
         }
       }
-    } else if (scenario.id === 'qualification-call') {
+    } else if (scenario?.id === 'qualification-call') {
       // For qualification call, check for budget discussion
       if (messageLower.includes('budget') || messageLower.includes('cost') || messageLower.includes('price')) {
         if (messageLower.includes('high') || messageLower.includes('expensive') || messageLower.includes('afford')) {
@@ -284,7 +333,7 @@ export function EmotionProvider({ children }) {
           newIntensity = Math.max(currentIntensity - 0.1, 0.3);
         }
       }
-    } else if (scenario.id === 'venue-tour') {
+    } else if (scenario?.id === 'venue-tour') {
       // For venue tour, check for specific feature mentions
       if (messageLower.includes('outdoor') || messageLower.includes('ceremony') || messageLower.includes('rustic')) {
         if (negativeCount === 0) {
@@ -302,7 +351,7 @@ export function EmotionProvider({ children }) {
           isNegativeSpike = true;
         }
       }
-    } else if (scenario.id === 'proposal-presentation') {
+    } else if (scenario?.id === 'proposal-presentation') {
       // For proposal presentation, check for value discussion
       if (messageLower.includes('value') || messageLower.includes('worth') || messageLower.includes('package')) {
         if (negativeCount > 0) {
@@ -324,16 +373,150 @@ export function EmotionProvider({ children }) {
       }
     }
     
+    // Apply emotion change cooldown
+    const lastEmotionChange = emotionalState.history[emotionalState.history.length - 1];
+    if (lastEmotionChange && 
+        Date.now() - new Date(lastEmotionChange.timestamp).getTime() < 5000) { // 5 second cooldown
+      // If emotion changed recently, require stronger signals for another change
+      if (Math.abs(negativeCount - positiveCount) < 0.3) {
+        newEmotion = lastEmotionChange.emotion;
+        newIntensity = lastEmotionChange.intensity;
+      }
+    }
+    
+    // VALIDATION CHECKS: Compare detected emotion against actual content
+    const validateEmotionAgainstContent = () => {
+      // Check for explicit emotion statements that should override our detection
+      const explicitEmotions = [
+        { emotion: 'happy', patterns: ['i am happy', 'i\'m happy', 'feeling happy', 'very happy'] },
+        { emotion: 'excited', patterns: ['i am excited', 'i\'m excited', 'feeling excited', 'very excited'] },
+        { emotion: 'pleased', patterns: ['i am pleased', 'i\'m pleased', 'feeling pleased', 'very pleased'] },
+        { emotion: 'interested', patterns: ['i am interested', 'i\'m interested', 'feeling interested', 'very interested'] },
+        { emotion: 'hopeful', patterns: ['i am hopeful', 'i\'m hopeful', 'feeling hopeful', 'very hopeful'] },
+        { emotion: 'frustrated', patterns: ['i am frustrated', 'i\'m frustrated', 'feeling frustrated', 'very frustrated'] },
+        { emotion: 'angry', patterns: ['i am angry', 'i\'m angry', 'feeling angry', 'very angry'] },
+        { emotion: 'disappointed', patterns: ['i am disappointed', 'i\'m disappointed', 'feeling disappointed', 'very disappointed'] },
+        { emotion: 'worried', patterns: ['i am worried', 'i\'m worried', 'feeling worried', 'very worried'] },
+        { emotion: 'concerned', patterns: ['i am concerned', 'i\'m concerned', 'feeling concerned', 'very concerned'] },
+        { emotion: 'confused', patterns: ['i am confused', 'i\'m confused', 'feeling confused', 'very confused'] }
+      ];
+      
+      // Check for explicit emotion statements
+      for (const { emotion, patterns } of explicitEmotions) {
+        if (patterns.some(pattern => messageLower.includes(pattern))) {
+          console.log(`EmotionContext: Explicit emotion statement detected: "${emotion}"`);
+          return { emotion, intensity: 0.8, isExplicit: true };
+        }
+      }
+      
+      // Check for emotion contradictions
+      const emotionContradictions = {
+        'happy': ['unhappy', 'sad', 'disappointed', 'frustrated'],
+        'excited': ['not excited', 'disappointed', 'frustrated'],
+        'pleased': ['not pleased', 'disappointed', 'frustrated'],
+        'interested': ['not interested', 'disappointed', 'frustrated'],
+        'hopeful': ['not hopeful', 'doubtful', 'skeptical'],
+        'frustrated': ['not frustrated', 'happy', 'pleased'],
+        'angry': ['not angry', 'happy', 'pleased'],
+        'disappointed': ['not disappointed', 'happy', 'pleased'],
+        'worried': ['not worried', 'confident', 'assured'],
+        'concerned': ['not concerned', 'confident', 'assured'],
+        'confused': ['not confused', 'clear', 'understood']
+      };
+      
+      // If we detected a specific emotion, check if there are contradictions
+      if (emotionContradictions[newEmotion]) {
+        const hasContradiction = emotionContradictions[newEmotion].some(word => 
+          messageLower.includes(word)
+        );
+        
+        if (hasContradiction) {
+          console.log(`EmotionContext: Contradiction detected for emotion "${newEmotion}"`);
+          // Revert to a more neutral emotion
+          return { emotion: 'neutral', intensity: 0.5, isContradiction: true };
+        }
+      }
+      
+      // Check for sarcasm indicators
+      const sarcasmIndicators = [
+        'yeah right', 'sure', 'whatever', 'great', 'perfect', 'wonderful',
+        'oh please', 'come on', 'give me a break', 'as if', 'whatever'
+      ];
+      
+      const hasSarcasm = sarcasmIndicators.some(indicator => messageLower.includes(indicator));
+      if (hasSarcasm && newEmotion === 'excited' || newEmotion === 'pleased' || newEmotion === 'happy') {
+        console.log(`EmotionContext: Sarcasm detected, adjusting positive emotion "${newEmotion}"`);
+        return { emotion: 'annoyed', intensity: 0.7, isSarcasm: true };
+      }
+      
+      // Check for emotional intensity mismatch
+      const highIntensityEmotions = ['excited', 'frustrated', 'angry', 'disappointed'];
+      const lowIntensityEmotions = ['pleased', 'interested', 'concerned', 'worried'];
+      
+      if (highIntensityEmotions.includes(newEmotion) && newIntensity < 0.6) {
+        // If we detected a high-intensity emotion but the intensity is low, check if it's justified
+        const hasHighIntensityIndicators = messageLower.includes('!') || 
+                                          messageLower.includes('very') || 
+                                          messageLower.includes('really') ||
+                                          messageLower.includes('so') ||
+                                          messageLower.includes('extremely');
+        
+        if (!hasHighIntensityIndicators) {
+          console.log(`EmotionContext: Intensity mismatch for "${newEmotion}", adjusting to lower intensity emotion`);
+          // Map to a lower intensity emotion
+          const lowIntensityMap = {
+            'excited': 'interested',
+            'frustrated': 'concerned',
+            'angry': 'annoyed',
+            'disappointed': 'concerned'
+          };
+          return { emotion: lowIntensityMap[newEmotion], intensity: 0.5, isIntensityMismatch: true };
+        }
+      }
+      
+      // If we detected a low-intensity emotion but the message has strong indicators
+      if (lowIntensityEmotions.includes(newEmotion) && 
+          (messageLower.includes('!') || messageLower.includes('very') || messageLower.includes('really'))) {
+        console.log(`EmotionContext: Intensity mismatch for "${newEmotion}", adjusting to higher intensity`);
+        // Increase intensity
+        return { emotion: newEmotion, intensity: Math.min(newIntensity + 0.2, 0.9), isIntensityBoost: true };
+      }
+      
+      // No validation issues found
+      return { emotion: newEmotion, intensity: newIntensity, isValid: true };
+    };
+    
+    // Apply validation checks
+    const validationResult = validateEmotionAgainstContent();
+    if (!validationResult.isValid) {
+      newEmotion = validationResult.emotion;
+      newIntensity = validationResult.intensity;
+      
+      // Log validation adjustments
+      if (validationResult.isExplicit) {
+        console.log(`EmotionContext: Using explicit emotion statement: "${newEmotion}"`);
+      } else if (validationResult.isContradiction) {
+        console.log(`EmotionContext: Resolved emotion contradiction, using "${newEmotion}"`);
+      } else if (validationResult.isSarcasm) {
+        console.log(`EmotionContext: Detected sarcasm, adjusted to "${newEmotion}"`);
+      } else if (validationResult.isIntensityMismatch) {
+        console.log(`EmotionContext: Fixed intensity mismatch, using "${newEmotion}" with intensity ${newIntensity}`);
+      } else if (validationResult.isIntensityBoost) {
+        console.log(`EmotionContext: Boosted intensity for "${newEmotion}" to ${newIntensity}`);
+      }
+    }
+    
     // Log the emotion analysis
     console.log(`Emotion Analysis:`, {
       message: messageLower.substring(0, 50) + (messageLower.length > 50 ? '...' : ''),
       positiveCount,
       negativeCount,
-      negativePatternCount,
+      matchedPatterns,
       currentEmotion,
       newEmotion,
       newIntensity,
-      isNegativeSpike
+      isNegativeSpike,
+      validationApplied: !validationResult.isValid
     });
     
     return { newEmotion, newIntensity, isNegativeSpike };
