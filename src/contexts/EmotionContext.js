@@ -123,6 +123,7 @@ export function EmotionProvider({ children }) {
         ? [...prevState.negativeSpikes, emotionRecord] 
         : prevState.negativeSpikes;
       
+      // Return the updated state with the new emotion values
       return {
         currentEmotion: adjustedEmotion,
         intensity: adjustedIntensity,
@@ -713,6 +714,58 @@ export function EmotionProvider({ children }) {
     });
   };
 
+  // Add a manual override function to allow correcting emotion detection
+  const overrideEmotion = (emotion, intensity = 0.7, reason = 'Manual override') => {
+    if (!emotion) return;
+    
+    // Validate emotion is in our allowed list
+    const validEmotions = [
+      'happy', 'excited', 'pleased', 'interested', 'hopeful',
+      'frustrated', 'angry', 'disappointed', 'worried', 'concerned',
+      'confused', 'doubtful', 'annoyed', 'neutral'
+    ];
+    
+    if (!validEmotions.includes(emotion)) {
+      console.error(`EmotionContext: Invalid emotion "${emotion}" for override`);
+      return;
+    }
+    
+    // Clamp intensity between 0.1 and 1.0
+    const clampedIntensity = Math.max(0.1, Math.min(1.0, intensity));
+    
+    // Create emotion record for the override
+    const emotionRecord = {
+      emotion: emotion,
+      intensity: clampedIntensity,
+      timestamp: new Date().toISOString(),
+      trigger: reason,
+      significantChange: true,
+      isManualOverride: true
+    };
+    
+    // Update emotional state
+    setEmotionalState(prevState => {
+      const updatedHistory = [...prevState.history, emotionRecord];
+      
+      // Track as negative spike if it's a negative emotion
+      const isNegativeEmotion = ['frustrated', 'angry', 'disappointed', 'worried', 
+                                'concerned', 'confused', 'doubtful', 'annoyed'].includes(emotion);
+      
+      const updatedNegativeSpikes = isNegativeEmotion
+        ? [...prevState.negativeSpikes, emotionRecord] 
+        : prevState.negativeSpikes;
+      
+      return {
+        currentEmotion: emotion,
+        intensity: clampedIntensity,
+        history: updatedHistory,
+        negativeSpikes: updatedNegativeSpikes
+      };
+    });
+    
+    console.log(`EmotionContext: Manual override applied - ${emotion} (${clampedIntensity}) - Reason: "${reason}"`);
+  };
+
   const value = {
     emotionalState,
     currentEmotion: emotionalState.currentEmotion,
@@ -720,7 +773,8 @@ export function EmotionProvider({ children }) {
     initializeEmotionTracking,
     updateEmotion,
     getEmotionalJourney,
-    resetEmotionTracking
+    resetEmotionTracking,
+    overrideEmotion
   };
 
   return (

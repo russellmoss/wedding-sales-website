@@ -18,7 +18,7 @@ const SimulatorChat = () => {
     error: simulatorError
   } = useSimulator();
   
-  const { currentEmotion, emotionIntensity, updateEmotion } = useEmotion();
+  const { currentEmotion, emotionIntensity, updateEmotion, overrideEmotion } = useEmotion();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [localLoading, setLocalLoading] = useState(true);
@@ -27,6 +27,12 @@ const SimulatorChat = () => {
   const timeoutRef = useRef(null);
   const [timeRemaining, setTimeRemaining] = useState(30 * 60); // 30 minutes in seconds
   const [isTimeoutActive, setIsTimeoutActive] = useState(false);
+  
+  // State for emotion override UI
+  const [showEmotionOverride, setShowEmotionOverride] = useState(false);
+  const [overrideEmotionType, setOverrideEmotionType] = useState('neutral');
+  const [overrideIntensity, setOverrideIntensity] = useState(0.7);
+  const [overrideReason, setOverrideReason] = useState('');
   
   // Combine local and context loading states
   const isLoading = localLoading || simulatorLoading;
@@ -337,6 +343,14 @@ const SimulatorChat = () => {
     );
   };
 
+  // Handle emotion override
+  const handleEmotionOverride = () => {
+    if (!overrideEmotionType) return;
+    
+    overrideEmotion(overrideEmotionType, overrideIntensity, overrideReason || 'Manual override');
+    setShowEmotionOverride(false);
+  };
+
   // If no scenario is available, show error
   if (!currentScenario) {
     return (
@@ -495,6 +509,87 @@ const SimulatorChat = () => {
             )}
           </button>
         </div>
+      </div>
+
+      {/* Emotion Override UI */}
+      {showEmotionOverride && (
+        <div className="emotion-override-panel">
+          <h3>Override Emotion Detection</h3>
+          <div className="emotion-override-form">
+            <div className="form-group">
+              <label htmlFor="emotion-type">Emotion:</label>
+              <select 
+                id="emotion-type" 
+                value={overrideEmotionType} 
+                onChange={(e) => setOverrideEmotionType(e.target.value)}
+              >
+                <option value="happy">Happy</option>
+                <option value="excited">Excited</option>
+                <option value="pleased">Pleased</option>
+                <option value="interested">Interested</option>
+                <option value="hopeful">Hopeful</option>
+                <option value="neutral">Neutral</option>
+                <option value="concerned">Concerned</option>
+                <option value="worried">Worried</option>
+                <option value="confused">Confused</option>
+                <option value="doubtful">Doubtful</option>
+                <option value="annoyed">Annoyed</option>
+                <option value="frustrated">Frustrated</option>
+                <option value="disappointed">Disappointed</option>
+                <option value="angry">Angry</option>
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="emotion-intensity">Intensity: {overrideIntensity}</label>
+              <input 
+                type="range" 
+                id="emotion-intensity" 
+                min="0.1" 
+                max="1.0" 
+                step="0.1" 
+                value={overrideIntensity} 
+                onChange={(e) => setOverrideIntensity(parseFloat(e.target.value))}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="override-reason">Reason (optional):</label>
+              <input 
+                type="text" 
+                id="override-reason" 
+                value={overrideReason} 
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Why are you overriding the emotion?"
+              />
+            </div>
+            
+            <div className="emotion-override-actions">
+              <button 
+                className="btn btn-primary" 
+                onClick={handleEmotionOverride}
+              >
+                Apply Override
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowEmotionOverride(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Emotion Override Button */}
+      <div className="emotion-override-button">
+        <button 
+          className="btn btn-outline-secondary btn-sm" 
+          onClick={() => setShowEmotionOverride(!showEmotionOverride)}
+        >
+          {showEmotionOverride ? 'Hide Override' : 'Override Emotion'}
+        </button>
       </div>
     </div>
   );
