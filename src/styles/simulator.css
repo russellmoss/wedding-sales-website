@@ -74,6 +74,7 @@
   padding: 12px;
   border-radius: 8px;
   max-width: 80%;
+  text-align: left;
 }
 
 .message.user {
@@ -89,6 +90,7 @@
 .message-content {
   font-size: 14px;
   line-height: 1.5;
+  text-align: left;
 }
 
 /* Typing Indicator */

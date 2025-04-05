@@ -317,18 +317,18 @@ const SimulatorChat = () => {
               className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-4 ${
+                className={`max-w-[80%] rounded-lg p-4 text-left ${
                   msg.type === 'user'
                     ? 'bg-blue-500 text-white'
                     : 'bg-white text-gray-900 shadow-sm'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-                <p className="text-xs mt-2 opacity-75">
+                <p className="whitespace-pre-wrap text-left">{msg.content}</p>
+                <p className="text-xs mt-2 opacity-75 text-left">
                   {new Date(msg.timestamp).toLocaleTimeString()}
                 </p>
                 {msg.type === 'assistant' && (
-                  <div className="message-emotion">
+                  <div className="message-emotion text-left">
                     <span className="emotion-label">Emotion:</span>
                     <span 
                       className="emotion-value"
