@@ -1,0 +1,246 @@
+.emotion-analysis-container {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.emotion-analysis-container h3 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.emotion-analysis-container h4 {
+  color: #444;
+  margin: 15px 0 10px;
+  font-size: 1.2rem;
+}
+
+.emotion-analysis-container h5 {
+  color: #555;
+  margin: 10px 0 5px;
+  font-size: 1rem;
+}
+
+/* Current Emotion Display */
+.current-emotion {
+  margin-bottom: 25px;
+}
+
+.emotion-display {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.emotion-label {
+  font-weight: 600;
+  color: #2c3e50;
+  min-width: 100px;
+}
+
+.intensity-bar {
+  flex-grow: 1;
+  height: 12px;
+  background-color: #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.intensity-bar.small {
+  height: 8px;
+}
+
+.intensity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  transition: width 0.3s ease;
+}
+
+/* Emotional Journey Timeline */
+.journey-timeline {
+  margin: 20px 0;
+  padding-left: 20px;
+  border-left: 2px solid #e0e0e0;
+}
+
+.journey-point {
+  position: relative;
+  margin-bottom: 15px;
+  padding-left: 20px;
+}
+
+.journey-point::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.point-time {
+  font-size: 0.8rem;
+  color: #777;
+  margin-bottom: 5px;
+}
+
+.point-emotion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.point-message {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 5px;
+  padding-left: 10px;
+  border-left: 2px solid #e0e0e0;
+}
+
+/* Frustration Analysis */
+.frustration-analysis {
+  background-color: #fff5f5;
+  border-radius: 6px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.frustration-score {
+  font-weight: 600;
+  color: #e74c3c;
+  margin: 10px 0;
+}
+
+.frustration-patterns ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.frustration-patterns li {
+  margin: 5px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.frustration-patterns li::before {
+  content: '⚠️';
+  position: absolute;
+  left: 0;
+}
+
+/* Feedback Section */
+.feedback-section {
+  margin: 25px 0;
+}
+
+.feedback-item {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+}
+
+.feedback-item p {
+  margin: 5px 0;
+  color: #555;
+  line-height: 1.5;
+}
+
+.feedback-item ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.feedback-item li {
+  margin: 8px 0;
+  padding-left: 25px;
+  position: relative;
+  color: #555;
+  line-height: 1.4;
+}
+
+.feedback-item li::before {
+  content: '•';
+  position: absolute;
+  left: 10px;
+  color: #4CAF50;
+}
+
+/* Emotion Statistics */
+.emotion-stats {
+  margin-top: 25px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.stat-item {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .emotion-analysis-container {
+    padding: 15px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .emotion-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .emotion-label {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .journey-point {
+    padding-left: 15px;
+  }
+  
+  .point-message {
+    font-size: 0.8rem;
+  }
+} 

@@ -219,4 +219,28 @@
   .grid {
     grid-template-columns: 1fr;
   }
+}
+
+.feedback-display button {
+  transition: all 0.2s ease-in-out;
+}
+
+.feedback-display button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-display button:disabled {
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.feedback-display .error-message {
+  background-color: #fff5f5;
+  border-left: 4px solid #e53e3e;
+  color: #c53030;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
 } 

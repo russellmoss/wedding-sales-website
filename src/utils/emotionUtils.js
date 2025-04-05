@@ -109,6 +109,8 @@ export const getEmotionBackgroundColor = (emotion) => {
  * @returns {string} - The emoji representing the emotion
  */
 export const getEmotionEmoji = (emotion) => {
+  if (!emotion) return '😐'; // Return default emoji if emotion is undefined
+  
   const emotionEmojis = {
     happy: '😊',
     sad: '😢',
@@ -125,5 +127,5 @@ export const getEmotionEmoji = (emotion) => {
     default: '😐'
   };
 
-  return emotionEmojis[emotion?.toLowerCase()] || emotionEmojis.default;
+  return emotionEmojis[emotion.toLowerCase()] || emotionEmojis.default;
 }; 

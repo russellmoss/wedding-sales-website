@@ -14,11 +14,26 @@ app.use(express.json());
 app.post('/api/claude', async (req, res) => {
   try {
     // Log the request for debugging
-    console.log('Received request to Claude API:', {
-      model: req.body.model,
-      max_tokens: req.body.max_tokens,
-      temperature: req.body.temperature
-    });
+    console.log('\n=== Claude API Request ===');
+    console.log('Model:', req.body.model);
+    console.log('Max Tokens:', req.body.max_tokens);
+    console.log('Temperature:', req.body.temperature);
+    
+    // Log system prompt if present
+    if (req.body.system) {
+      console.log('\n=== System Prompt ===');
+      console.log(req.body.system);
+    }
+    
+    // Log messages if present
+    if (req.body.messages && req.body.messages.length > 0) {
+      console.log('\n=== Messages ===');
+      req.body.messages.forEach((msg, index) => {
+        console.log(`\nMessage ${index + 1}:`);
+        console.log('Role:', msg.role);
+        console.log('Content:', msg.content);
+      });
+    }
     
     // Ensure we have an API key
     if (!process.env.CLAUDE_API_KEY) {
@@ -38,17 +53,30 @@ app.post('/api/claude', async (req, res) => {
     });
     
     // Log successful response
-    console.log('Claude API response received');
+    console.log('\n=== Claude API Response ===');
+    console.log('Status:', response.status);
+    console.log('Response Time:', response.headers['x-response-time'] || 'N/A');
+    
+    // Log token usage if available
+    if (response.data.usage) {
+      console.log('\n=== Token Usage ===');
+      console.log('Input Tokens:', response.data.usage.input_tokens);
+      console.log('Output Tokens:', response.data.usage.output_tokens);
+      console.log('Total Tokens:', response.data.usage.input_tokens + response.data.usage.output_tokens);
+    }
+    
+    // Log the actual response content
+    console.log('\n=== Response Content ===');
+    console.log(response.data.content || response.data.message?.content || 'No content in response');
     
     // Return the response to the client
     res.json(response.data);
   } catch (error) {
     // Log detailed error information
-    console.error('Error proxying to Claude API:', {
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
+    console.error('\n=== Claude API Error ===');
+    console.error('Status:', error.response?.status);
+    console.error('Error Data:', error.response?.data);
+    console.error('Error Message:', error.message);
     
     // Return appropriate error response
     res.status(error.response?.status || 500).json({

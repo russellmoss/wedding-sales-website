@@ -242,15 +242,17 @@ const SimulatorChat = () => {
     const intensityPercent = Math.round(emotionIntensity * 100);
     
     // Determine if this is a concerning emotion level that needs attention
-    const isNegativeEmotion = ['frustrated', 'angry', 'disappointed', 'worried', 
+    const isNegativeEmotion = currentEmotion ? ['frustrated', 'angry', 'disappointed', 'worried', 
                               'concerned', 'confused', 'doubtful', 'annoyed',
-                              'very_negative', 'negative'].includes(currentEmotion);
+                              'very_negative', 'negative'].includes(currentEmotion) : false;
     
     const isHighIntensity = intensityPercent > 70;
     const needsAttention = isNegativeEmotion && isHighIntensity;
     
     // Get emoji for current emotion
     const getEmotionEmoji = (emotion) => {
+      if (!emotion) return '😐'; // Return default emoji if emotion is undefined
+      
       switch(emotion.toLowerCase()) {
         case 'happy': return '😊';
         case 'excited': return '🤩';
@@ -291,7 +293,7 @@ const SimulatorChat = () => {
             fontWeight: needsAttention ? 'bold' : 'normal',
             marginLeft: '4px'
           }}>
-            {currentEmotion.charAt(0).toUpperCase() + currentEmotion.slice(1)}
+            {currentEmotion ? currentEmotion.charAt(0).toUpperCase() + currentEmotion.slice(1) : 'Neutral'}
           </span>
           {needsAttention && 
             <span style={{ 
@@ -336,7 +338,7 @@ const SimulatorChat = () => {
             padding: '8px',
             borderRadius: '4px'
           }}>
-            <strong>Warning:</strong> Customer is showing signs of {currentEmotion}. Consider addressing their concerns immediately.
+            <strong>Warning:</strong> Customer is showing signs of {currentEmotion || 'frustration'}. Consider addressing their concerns immediately.
           </div>
         )}
       </div>

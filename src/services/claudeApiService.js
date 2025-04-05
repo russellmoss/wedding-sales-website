@@ -163,7 +163,7 @@ Remember: You are ONLY responding as the sales representative. Do not evaluate o
 export const createEvaluatorSystemPrompt = (scenario) => {
   if (!scenario) {
     console.error("createEvaluatorSystemPrompt called with null or undefined scenario");
-    return "You are an expert sales coach evaluating a sales conversation.";
+    return "You are an expert sales coach evaluating a sales conversation for a wedding venue.";
   }
   
   console.log("Creating evaluator system prompt for scenario:", scenario);
@@ -199,6 +199,7 @@ Your role is to:
 3. Consider the customer's emotional journey throughout the conversation
 4. Identify specific moments where the representative excelled or missed opportunities
 5. Suggest improvements for future interactions
+6. Pay special attention to whether the representative mentioned a specific follow-up plan if the customer doesn't respond
 
 Remember: You are ONLY evaluating the conversation. Do not respond as the customer.`;
 
@@ -251,22 +252,22 @@ export const createEvaluationPrompt = (scenario, chatHistory, emotionalJourney, 
   if (emotionalJourney) {
     emotionalJourneySection = `
 Customer Emotional Journey:
-- Initial Emotion: ${emotionalJourney.history[0]?.emotion || 'neutral'}
-- Final Emotion: ${emotionalJourney.currentEmotion}
-- Emotion Intensity: ${Math.round(emotionalJourney.intensity * 100)}%
-- Negative Emotion Spikes: ${emotionalJourney.negativeSpikeCount}
-- Emotion Changes: ${emotionalJourney.emotionChanges}
-- Average Emotion Intensity: ${Math.round(emotionalJourney.averageIntensity * 100)}%
+- Initial Emotion: ${emotionalJourney.history && emotionalJourney.history[0]?.emotion || 'neutral'}
+- Final Emotion: ${emotionalJourney.currentEmotion || 'neutral'}
+- Emotion Intensity: ${Math.round((emotionalJourney.intensity || 0.5) * 100)}%
+- Negative Emotion Spikes: ${emotionalJourney.negativeSpikes?.length || 0}
+- Emotion Changes: ${emotionalJourney.history?.length || 0}
+- Average Emotion Intensity: ${Math.round((emotionalJourney.intensity || 0.5) * 100)}%
 
 Emotion Timeline:
-${emotionalJourney.history.map((record, index) => 
-  `${index + 1}. ${record.emotion} (${Math.round(record.intensity * 100)}%) - Trigger: "${record.trigger}"`
-).join('\n')}
+${emotionalJourney.history ? emotionalJourney.history.map((record, index) => 
+  `${index + 1}. ${record.emotion || 'neutral'} (${Math.round((record.intensity || 0.5) * 100)}%) - Trigger: "${record.message || 'Unknown'}"`
+).join('\n') : 'No emotion history available'}
 
-${emotionalJourney.negativeSpikes.length > 0 ? `
+${emotionalJourney.negativeSpikes && emotionalJourney.negativeSpikes.length > 0 ? `
 Negative Emotion Spikes:
 ${emotionalJourney.negativeSpikes.map((spike, index) => 
-  `${index + 1}. ${spike.emotion} (${Math.round(spike.intensity * 100)}%) - Trigger: "${spike.trigger}"`
+  `${index + 1}. ${spike.emotion || 'negative'} (${Math.round((spike.score || 0.7) * 100)}%) - Trigger: "${spike.message || 'Unknown'}"`
 ).join('\n')}
 ` : ''}
 `;
@@ -278,100 +279,35 @@ ${emotionalJourney.negativeSpikes.map((spike, index) =>
     interactionsSection = `
 Tracked Interactions:
 
-${interactions.negativeInteractions.length > 0 ? `
+${interactions.negativeInteractions && interactions.negativeInteractions.length > 0 ? `
 Negative Interactions:
 ${interactions.negativeInteractions.map((interaction, index) => 
-  `${index + 1}. ${interaction.description} - Impact: ${interaction.impact}`
+  `${index + 1}. ${interaction.description || 'Unknown'} - Impact: ${interaction.impact || 'Unknown'}`
 ).join('\n')}
 ` : ''}
 
-${interactions.missedOpportunities.length > 0 ? `
+${interactions.missedOpportunities && interactions.missedOpportunities.length > 0 ? `
 Missed Opportunities:
 ${interactions.missedOpportunities.map((opportunity, index) => 
-  `${index + 1}. ${opportunity.description} - Impact: ${opportunity.impact}`
-).join('\n')}
-` : ''}
-
-${interactions.rapportBuilding.length > 0 ? `
-Rapport Building Moments:
-${interactions.rapportBuilding.map((moment, index) => 
-  `${index + 1}. ${moment.description} - Impact: ${moment.impact}`
-).join('\n')}
-` : ''}
-
-${interactions.closingAttempts.length > 0 ? `
-Closing Attempts:
-${interactions.closingAttempts.map((attempt, index) => 
-  `${index + 1}. ${attempt.description} - Effectiveness: ${attempt.effectiveness}`
+  `${index + 1}. ${opportunity.description || 'Unknown'} - Impact: ${opportunity.impact || 'Unknown'}`
 ).join('\n')}
 ` : ''}
 `;
   }
 
-  // Format gold standard comparison if available
-  let goldStandardSection = "";
-  if (goldStandardComparison) {
-    goldStandardSection = `
-Gold Standard Comparison:
-- Overall Score: ${goldStandardComparison.score}%
-- Feedback: ${goldStandardComparison.feedback}
-
-Deviations from Best Practices:
-${goldStandardComparison.deviations.map((deviation, index) => 
-  `${index + 1}. ${deviation.description} - Impact: ${deviation.impact}`
-).join('\n')}
-`;
-  }
-
-  const prompt = `You are an expert sales coach evaluating a sales conversation for a wedding venue.
-
+  return `
 Scenario: ${scenario.title || 'Wedding Venue Sales'}
 Description: ${scenario.description || 'A conversation with a potential client about booking a wedding venue'}
 
 Evaluation Criteria:
 ${criteriaList || '- No specific criteria provided'}
 
-Conversation History:
 ${formattedHistory}
+
 ${emotionalJourneySection}
+
 ${interactionsSection}
-${goldStandardSection}
 
-IMPORTANT: Apply the following penalties:
-- Subtract 15-25 points for any instance of the sales rep being abrupt or dismissive
-- Subtract 10-20 points for failing to address the customer's emotional needs
-- Subtract 15-25 points for pushing a sale without building rapport
-- Subtract 10-15 points for each negative emotion spike in the customer's journey
-- Subtract 5-10 points for each missed opportunity to build rapport
-- Subtract 5-10 points for each missed opportunity to address pricing concerns
-- Subtract 10-15 points for attempting to close without addressing objections
-- Subtract 5-10 points for each deviation from gold standard best practices
-
-FOLLOW THIS EVALUATION PROCESS:
-1. FIRST, identify all issues and problems in the conversation
-2. THEN, identify strengths and positive aspects
-3. NEXT, calculate the score based on the number and severity of issues found
-4. FINALLY, provide specific suggestions for improvement
-
-This "Feedback First" approach ensures that serious flaws are properly accounted for in the final score, preventing the halo effect where a generally "good" conversation gets a high score despite significant issues.
-
-Please provide a detailed evaluation of the sales representative's performance:
-1. List all issues and problems identified in the conversation
-2. List all strengths and positive aspects
-3. A numerical score from 0-100 based on the evaluation criteria, emotional journey, tracked interactions, and gold standard comparison
-4. Specific feedback on areas for improvement
-5. Suggestions for better responses
-6. Analysis of how well the representative managed the customer's emotional state
-7. Analysis of specific negative interactions and missed opportunities
-8. Detailed breakdown of any penalties applied
-9. Comparison with gold standard responses and identification of key deviations
-
-Format your response as:
-Issues: [list of issues]
-Strengths: [list of strengths]
-Score: [number]%
-Feedback: [detailed feedback]`;
-
-  console.log("Generated evaluation prompt:", prompt);
-  return prompt;
-}; 
+Please evaluate this sales conversation for a wedding venue.
+`;
+};
