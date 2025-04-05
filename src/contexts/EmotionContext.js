@@ -181,6 +181,236 @@ export function EmotionProvider({ children }) {
       'would', 'should', 'need', 'want', 'looking', 'searching', 'finding'
     ];
     
+    // Add contextual patterns for better understanding of implicit emotions
+    const contextualPatterns = [
+      // Positive contextual patterns
+      { 
+        pattern: 'thanks', 
+        context: 'gratitude', 
+        emotion: 'grateful', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'thank you', 
+        context: 'gratitude', 
+        emotion: 'grateful', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'sounds good', 
+        context: 'agreement', 
+        emotion: 'pleased', 
+        intensity: 0.6,
+        weight: 2.5
+      },
+      { 
+        pattern: 'that works', 
+        context: 'agreement', 
+        emotion: 'satisfied', 
+        intensity: 0.6,
+        weight: 2.5
+      },
+      { 
+        pattern: 'perfect', 
+        context: 'approval', 
+        emotion: 'excited', 
+        intensity: 0.8,
+        weight: 3.0
+      },
+      { 
+        pattern: 'great', 
+        context: 'approval', 
+        emotion: 'pleased', 
+        intensity: 0.7,
+        weight: 2.5
+      },
+      { 
+        pattern: 'awesome', 
+        context: 'enthusiasm', 
+        emotion: 'excited', 
+        intensity: 0.8,
+        weight: 3.0
+      },
+      { 
+        pattern: 'amazing', 
+        context: 'enthusiasm', 
+        emotion: 'excited', 
+        intensity: 0.8,
+        weight: 3.0
+      },
+      { 
+        pattern: 'love it', 
+        context: 'enthusiasm', 
+        emotion: 'enthusiastic', 
+        intensity: 0.9,
+        weight: 3.5
+      },
+      { 
+        pattern: 'can\'t wait', 
+        context: 'anticipation', 
+        emotion: 'excited', 
+        intensity: 0.8,
+        weight: 3.0
+      },
+      { 
+        pattern: 'looking forward', 
+        context: 'anticipation', 
+        emotion: 'hopeful', 
+        intensity: 0.7,
+        weight: 2.5
+      },
+      { 
+        pattern: 'book it', 
+        context: 'commitment', 
+        emotion: 'excited', 
+        intensity: 0.9,
+        weight: 3.5
+      },
+      { 
+        pattern: 'sign the contract', 
+        context: 'commitment', 
+        emotion: 'excited', 
+        intensity: 0.9,
+        weight: 3.5
+      },
+      { 
+        pattern: 'yes', 
+        context: 'agreement', 
+        emotion: 'pleased', 
+        intensity: 0.6,
+        weight: 2.0
+      },
+      { 
+        pattern: 'absolutely', 
+        context: 'agreement', 
+        emotion: 'pleased', 
+        intensity: 0.7,
+        weight: 2.5
+      },
+      { 
+        pattern: 'definitely', 
+        context: 'agreement', 
+        emotion: 'pleased', 
+        intensity: 0.7,
+        weight: 2.5
+      },
+      { 
+        pattern: 'sure', 
+        context: 'agreement', 
+        emotion: 'pleased', 
+        intensity: 0.6,
+        weight: 2.0
+      },
+      { 
+        pattern: 'of course', 
+        context: 'agreement', 
+        emotion: 'pleased', 
+        intensity: 0.6,
+        weight: 2.0
+      },
+      // Negative contextual patterns
+      { 
+        pattern: 'too expensive', 
+        context: 'budget', 
+        emotion: 'concerned', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'out of budget', 
+        context: 'budget', 
+        emotion: 'concerned', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'can\'t afford', 
+        context: 'budget', 
+        emotion: 'worried', 
+        intensity: 0.8,
+        weight: 3.5
+      },
+      { 
+        pattern: 'not sure', 
+        context: 'uncertainty', 
+        emotion: 'confused', 
+        intensity: 0.6,
+        weight: 2.5
+      },
+      { 
+        pattern: 'don\'t understand', 
+        context: 'uncertainty', 
+        emotion: 'confused', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'not what i expected', 
+        context: 'disappointment', 
+        emotion: 'disappointed', 
+        intensity: 0.8,
+        weight: 3.5
+      },
+      { 
+        pattern: 'not what we expected', 
+        context: 'disappointment', 
+        emotion: 'disappointed', 
+        intensity: 0.8,
+        weight: 3.5
+      },
+      { 
+        pattern: 'look elsewhere', 
+        context: 'rejection', 
+        emotion: 'disappointed', 
+        intensity: 0.8,
+        weight: 3.5
+      },
+      { 
+        pattern: 'other venues', 
+        context: 'rejection', 
+        emotion: 'disappointed', 
+        intensity: 0.8,
+        weight: 3.5
+      },
+      { 
+        pattern: 'no thanks', 
+        context: 'rejection', 
+        emotion: 'disappointed', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'not interested', 
+        context: 'rejection', 
+        emotion: 'disappointed', 
+        intensity: 0.7,
+        weight: 3.0
+      },
+      { 
+        pattern: 'maybe later', 
+        context: 'hesitation', 
+        emotion: 'doubtful', 
+        intensity: 0.6,
+        weight: 2.5
+      },
+      { 
+        pattern: 'need to think', 
+        context: 'hesitation', 
+        emotion: 'doubtful', 
+        intensity: 0.6,
+        weight: 2.5
+      },
+      { 
+        pattern: 'need more time', 
+        context: 'hesitation', 
+        emotion: 'doubtful', 
+        intensity: 0.6,
+        weight: 2.5
+      }
+    ];
+    
     // Check for negative phrases that indicate frustration with context
     const negativePatterns = [
       { pattern: 'i\'m surprised', context: 'response_time' },
@@ -219,6 +449,40 @@ export function EmotionProvider({ children }) {
     let positiveCount = countKeywordMatches(messageLower, positiveKeywords) * 2.5; // Increased weight for content
     let negativeCount = countKeywordMatches(messageLower, negativeKeywords) * 2.5; // Increased weight for content
     const neutralCount = countKeywordMatches(messageLower, neutralKeywords) * 1.5; // Increased weight for content
+    
+    // Check for contextual patterns to enhance emotion detection
+    let contextualEmotionDetected = false;
+    let contextualEmotionType = null;
+    let contextualEmotionIntensity = 0.5;
+    
+    // Check for contextual patterns
+    const matchedContextualPatterns = contextualPatterns
+      .filter(({ pattern }) => messageLower.includes(pattern))
+      .map(({ pattern, context, emotion, intensity, weight }) => ({ 
+        pattern, context, emotion, intensity, weight 
+      }));
+    
+    // Apply contextual pattern matches with their weights
+    if (matchedContextualPatterns.length > 0) {
+      // Sort by weight to prioritize stronger matches
+      matchedContextualPatterns.sort((a, b) => b.weight - a.weight);
+      
+      // Use the highest weighted match
+      const topMatch = matchedContextualPatterns[0];
+      contextualEmotionDetected = true;
+      contextualEmotionType = topMatch.emotion;
+      contextualEmotionIntensity = topMatch.intensity;
+      
+      // Apply the weight to the appropriate emotion count
+      if (['happy', 'excited', 'pleased', 'interested', 'hopeful', 
+           'grateful', 'enthusiastic', 'optimistic', 'confident', 'satisfied'].includes(topMatch.emotion)) {
+        positiveCount += topMatch.weight;
+      } else {
+        negativeCount += topMatch.weight;
+      }
+      
+      console.log(`EmotionContext: Contextual pattern detected: "${topMatch.pattern}" (${topMatch.context}) -> ${topMatch.emotion} (${topMatch.intensity})`);
+    }
     
     // Check for negative patterns with context - reduced weight
     const matchedPatterns = negativePatterns
@@ -509,6 +773,11 @@ export function EmotionProvider({ children }) {
         return { emotion: explicitEmotionType, intensity: 0.8, isExplicit: true };
       }
       
+      // If we detected a contextual emotion, consider it next
+      if (contextualEmotionDetected) {
+        return { emotion: contextualEmotionType, intensity: contextualEmotionIntensity, isContextual: true };
+      }
+      
       // Check for explicit emotion statements that should override our detection
       const explicitEmotions = [
         { emotion: 'happy', patterns: ['i am happy', 'i\'m happy', 'feeling happy', 'very happy'] },
@@ -534,6 +803,14 @@ export function EmotionProvider({ children }) {
         if (patterns.some(pattern => messageLower.includes(pattern))) {
           console.log(`EmotionContext: Explicit emotion statement detected: "${emotion}"`);
           return { emotion, intensity: 0.8, isExplicit: true };
+        }
+      }
+      
+      // Check for contextual patterns that might indicate emotion
+      for (const { pattern, emotion, intensity } of matchedContextualPatterns) {
+        if (messageLower.includes(pattern)) {
+          console.log(`EmotionContext: Contextual pattern detected: "${pattern}" -> ${emotion}`);
+          return { emotion, intensity, isContextual: true };
         }
       }
       
@@ -656,11 +933,13 @@ export function EmotionProvider({ children }) {
         exclamationMarks: exclamationCount,
         matchedPatterns: matchedPatterns.length
       },
+      contextualPatterns: matchedContextualPatterns.map(p => p.pattern),
       currentEmotion,
       newEmotion,
       newIntensity,
       isNegativeSpike,
       explicitEmotionDetected,
+      contextualEmotionDetected,
       validationApplied: !validationResult.isValid
     });
     
