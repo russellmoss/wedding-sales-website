@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 function Sidebar({ isOpen, closeSidebar }) {
   const location = useLocation();
+  const { currentUser } = useAuth();
   const [expandedSections, setExpandedSections] = useState({
     weddings: true,
-    sales: true
+    sales: true,
+    admin: false
   });
 
   const weddingPages = [
@@ -32,6 +35,10 @@ function Sidebar({ isOpen, closeSidebar }) {
     { path: '/sales/crm-tips', title: 'CRM Tips' }
   ];
 
+  const adminPages = [
+    { path: '/admin/api-debug', title: 'API Debug Panel' }
+  ];
+
   const toggleSection = (section) => {
     setExpandedSections({
       ...expandedSections,
@@ -42,6 +49,9 @@ function Sidebar({ isOpen, closeSidebar }) {
   const isActive = (path) => {
     return location.pathname === path ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-100';
   };
+
+  // Check if user is an admin
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <>
@@ -167,6 +177,41 @@ function Sidebar({ isOpen, closeSidebar }) {
               Simulator
             </Link>
           </div>
+          
+          {/* Admin Section - Only visible to admins */}
+          {isAdmin && (
+            <div className="px-4 mb-2">
+              <div
+                className="flex items-center justify-between px-4 py-2 text-sm font-medium cursor-pointer text-red-600"
+                onClick={() => toggleSection('admin')}
+              >
+                <span>Admin</span>
+                <svg
+                  className={`h-5 w-5 transform ${expandedSections.admin ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              
+              {expandedSections.admin && (
+                <div className="mt-1 space-y-1">
+                  {adminPages.map((page) => (
+                    <Link
+                      key={page.path}
+                      to={page.path}
+                      className={`block pl-8 pr-4 py-2 text-sm rounded-md ${isActive(page.path)}`}
+                      onClick={closeSidebar}
+                    >
+                      {page.title}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </aside>
     </>

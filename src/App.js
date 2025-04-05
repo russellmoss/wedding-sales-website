@@ -46,6 +46,7 @@ import CRMTips from './components/sales/CRMTips';
 
 // Simulator Components
 import SalesSimulator from './components/simulator/SalesSimulator';
+import ApiDebugPanel from './components/simulator/ApiDebugPanel';
 
 function App() {
   return (
@@ -102,6 +103,11 @@ function App() {
 
                 {/* Simulator routes */}
                 <Route path="/simulator/*" element={<SalesSimulator />} />
+                
+                {/* Admin routes */}
+                <Route path="/admin">
+                  <Route path="api-debug" element={<ApiDebugPanel />} />
+                </Route>
               </Route>
             </Routes>
           </SimulatorProvider>
