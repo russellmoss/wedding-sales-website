@@ -67,18 +67,36 @@ export function EmotionProvider({ children }) {
       scenario
     );
     
+    // Determine if this is a significant emotional change
+    const emotionChanged = newEmotion !== emotionalState.currentEmotion;
+    const intensityChanged = Math.abs(newIntensity - emotionalState.intensity) > 0.15;
+    const isSignificantChange = emotionChanged || intensityChanged;
+    
     // Create emotion record
     const emotionRecord = {
       emotion: newEmotion,
       intensity: newIntensity,
       timestamp: new Date().toISOString(),
-      trigger: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : '')
+      trigger: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : ''),
+      significantChange: isSignificantChange
     };
     
     // Update emotional state
     setEmotionalState(prevState => {
       const updatedHistory = [...prevState.history, emotionRecord];
-      const updatedNegativeSpikes = isNegativeSpike 
+      
+      // Track negative spikes - include if it's a new negative emotion or
+      // if it's a significant intensity increase for an already negative emotion
+      const isNegativeEmotion = ['frustrated', 'angry', 'disappointed', 'worried', 
+                                'concerned', 'confused', 'doubtful', 'annoyed',
+                                'very_negative', 'negative'].includes(newEmotion);
+      
+      const isIntensityIncrease = newIntensity > prevState.intensity;
+      
+      const shouldTrackAsSpike = isNegativeSpike || 
+                                (isNegativeEmotion && isIntensityIncrease && intensityChanged);
+      
+      const updatedNegativeSpikes = shouldTrackAsSpike
         ? [...prevState.negativeSpikes, emotionRecord] 
         : prevState.negativeSpikes;
       
@@ -90,7 +108,13 @@ export function EmotionProvider({ children }) {
       };
     });
     
-    console.log(`EmotionContext: Updated emotion to ${newEmotion} (${newIntensity}) based on message`);
+    // Log more detailed information about emotion changes
+    console.log(`EmotionContext: Updated emotion from ${emotionalState.currentEmotion} (${emotionalState.intensity}) to ${newEmotion} (${newIntensity}) based on message`);
+    
+    // If this is a negative spike, log it with more prominence
+    if (isNegativeSpike) {
+      console.warn(`EmotionContext: ⚠️ NEGATIVE SPIKE DETECTED - ${newEmotion} (${newIntensity}) - Trigger: "${messageContent.substring(0, 100)}..."`);
+    }
   };
 
    // Analyze message for emotional content
