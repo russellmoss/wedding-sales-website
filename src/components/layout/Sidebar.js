@@ -148,14 +148,23 @@ function Sidebar({ isOpen, closeSidebar }) {
             )}
           </div>
           
-          {/* Quizzes Link */}
-          <div className="px-4 mb-4">
+          {/* Quizzes Section */}
+          <div className="px-4 mb-2">
             <Link
               to="/quizzes"
               className={`block px-4 py-2 rounded-md ${isActive('/quizzes')}`}
               onClick={closeSidebar}
             >
               Quizzes
+            </Link>
+            
+            {/* Simulator Link */}
+            <Link
+              to="/simulator"
+              className={`block px-4 py-2 rounded-md ${isActive('/simulator')}`}
+              onClick={closeSidebar}
+            >
+              Simulator
             </Link>
           </div>
         </div>
