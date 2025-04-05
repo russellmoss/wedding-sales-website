@@ -4,6 +4,7 @@
  */
 
 import { makeRateLimitedRequest, formatClaudeError, trackTokenUsage } from '../utils/claudeApiUtils';
+import { logApiRequest, logApiResponse, logApiError } from '../utils/claudeApiLogger';
 
 // Configuration constants
 const API_BASE_URL = process.env.REACT_APP_CLAUDE_API_URL || 'https://api.anthropic.com/v1';
@@ -35,6 +36,18 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
       temperature: options.temperature || 0.7,
     };
     
+    // Log the request
+    logApiRequest('conversation', {
+      url: `${API_BASE_URL}/messages`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': '[REDACTED]',
+        'anthropic-version': '2023-06-01'
+      },
+      body: requestBody
+    });
+    
     // Use the rate-limited request function
     const data = await makeRateLimitedRequest(async () => {
       // Make the API request
@@ -60,11 +73,16 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
       return await response.json();
     });
     
+    // Log the response
+    logApiResponse('conversation', data);
+    
     // Track token usage for monitoring
     trackTokenUsage(data);
     
     return data;
   } catch (error) {
+    // Log the error
+    logApiError('conversation', error);
     console.error('Error calling Claude API:', formatClaudeError(error));
     throw error;
   }
