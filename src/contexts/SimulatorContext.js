@@ -355,50 +355,173 @@ export const SimulatorProvider = ({ children }) => {
       .filter(msg => msg.type === 'assistant')
       .pop();
     
-    // Analyze for negative interactions
-    if (currentEmotion === 'frustrated' || currentEmotion === 'angry') {
+    // Get previous user messages (up to 3) to detect patterns
+    const recentUserMessages = chatHistory
+      .filter(msg => msg.type === 'user')
+      .slice(-3);
+    
+    const messageLower = userMessage.content.toLowerCase();
+    
+    // Analyze for negative interactions - expanded list of triggers
+    const negativeEmotions = ['frustrated', 'angry', 'disappointed', 'very_negative'];
+    const negativeKeywords = [
+      'ridiculous', 'absurd', 'unreasonable', 'waste of time', 
+      'not interested', 'looking elsewhere', 'too expensive',
+      'other venues', 'moving on', 'unhappy', 'annoyed'
+    ];
+    
+    const hasNegativeEmotion = negativeEmotions.includes(currentEmotion);
+    const hasNegativeKeyword = negativeKeywords.some(keyword => messageLower.includes(keyword));
+    
+    if (hasNegativeEmotion || hasNegativeKeyword) {
+      const negativeType = hasNegativeKeyword ? 
+        `explicitly stated ${negativeKeywords.find(k => messageLower.includes(k))}` :
+        `showed ${currentEmotion} emotion`;
+      
       trackNegativeInteraction({
-        description: `Customer expressed ${currentEmotion} emotion`,
+        description: `Customer ${negativeType}`,
         impact: 'high',
-        trigger: userMessage.content
+        trigger: userMessage.content.substring(0, 100) + (userMessage.content.length > 100 ? '...' : '')
       });
+      
+      console.warn(`Negative interaction detected: ${negativeType}`);
     }
     
-    // Analyze for missed opportunities
-    if (userMessage.content.toLowerCase().includes('budget') && 
-        lastAssistantMessage && 
-        !lastAssistantMessage.content.toLowerCase().includes('package') &&
-        !lastAssistantMessage.content.toLowerCase().includes('price')) {
+    // Detect sudden shift in tone from previous messages
+    if (recentUserMessages.length > 1) {
+      const prevMsg = recentUserMessages[recentUserMessages.length - 2]?.content.toLowerCase() || '';
+      const currentMsg = messageLower;
+      
+      // Check message length change - sudden very short responses can signal disengagement
+      if (prevMsg.length > 50 && currentMsg.length < 15) {
+        trackNegativeInteraction({
+          description: 'Customer message length dropped significantly - possible disengagement',
+          impact: 'medium',
+          trigger: 'Message length changed from ' + prevMsg.length + ' to ' + currentMsg.length + ' characters'
+        });
+      }
+      
+      // Check for abrupt endings
+      const endingPhrases = [
+        'thank you for your time', 'we\'ll think about it', 'get back to you',
+        'consider other', 'look elsewhere', 'need to go', 'have to go'
+      ];
+      
+      if (endingPhrases.some(phrase => currentMsg.includes(phrase))) {
+        trackNegativeInteraction({
+          description: 'Customer signaling conversation end - possible lost opportunity',
+          impact: 'high',
+          trigger: userMessage.content
+        });
+      }
+    }
+    
+    // Analyze for missed opportunities - expanded
+    const opportunityTriggers = [
+      {keyword: 'budget', context: 'Budget discussion', response: 'package|price|cost|value|investment'},
+      {keyword: 'date', context: 'Date availability', response: 'calendar|availability|available|schedule|book'},
+      {keyword: 'capacity', context: 'Venue capacity', response: 'accommodate|guest|fit|space|room'},
+      {keyword: 'menu', context: 'Food & beverage', response: 'catering|food|chef|cuisine|dietary'},
+      {keyword: 'weather', context: 'Weather contingency', response: 'rain|backup|plan|indoor|tent'}
+    ];
+    
+    opportunityTriggers.forEach(trigger => {
+      if (messageLower.includes(trigger.keyword) && 
+          lastAssistantMessage && 
+          !new RegExp(trigger.response).test(lastAssistantMessage.content.toLowerCase())) {
+        trackMissedOpportunity({
+          description: `Missed opportunity to address ${trigger.keyword} concerns`,
+          impact: 'medium',
+          context: trigger.context
+        });
+      }
+    });
+    
+    // Analyze for repeated questions/concerns that weren't addressed
+    const repeatedConcerns = recentUserMessages
+      .filter(msg => msg !== userMessage) // Exclude current message
+      .filter(msg => {
+        const msgLower = msg.content.toLowerCase();
+        // Find a concern in previous message that's repeated in current message
+        return opportunityTriggers.some(trigger => 
+          msgLower.includes(trigger.keyword) && messageLower.includes(trigger.keyword)
+        );
+      });
+    
+    if (repeatedConcerns.length > 0) {
+      const concernType = opportunityTriggers.find(trigger => 
+        messageLower.includes(trigger.keyword) && 
+        repeatedConcerns.some(msg => msg.content.toLowerCase().includes(trigger.keyword))
+      )?.context || 'customer concern';
+      
       trackMissedOpportunity({
-        description: 'Missed opportunity to discuss pricing packages',
-        impact: 'medium',
-        context: 'Budget discussion'
+        description: `Failed to address repeated ${concernType} - customer had to ask again`,
+        impact: 'high',
+        context: 'Repeated concerns'
       });
     }
     
-    // Analyze for rapport building
-    if (lastAssistantMessage && 
-        (lastAssistantMessage.content.toLowerCase().includes('understand') ||
-        lastAssistantMessage.content.toLowerCase().includes('feel') ||
-        lastAssistantMessage.content.toLowerCase().includes('share'))) {
-      trackRapportBuilding({
-        description: 'Demonstrated empathy and understanding',
-        impact: 'positive',
-        context: 'Emotional connection'
-      });
+    // Analyze for rapport building - expanded
+    const rapportPhrases = [
+      {phrase: 'understand', impact: 'medium', context: 'Empathy'},
+      {phrase: 'feel', impact: 'medium', context: 'Emotional connection'},
+      {phrase: 'appreciate', impact: 'medium', context: 'Gratitude'},
+      {phrase: 'similar to', impact: 'high', context: 'Shared experience'},
+      {phrase: 'like you', impact: 'high', context: 'Personal connection'},
+      {phrase: 'absolutely', impact: 'medium', context: 'Affirmation'},
+      {phrase: 'great question', impact: 'medium', context: 'Validation'}
+    ];
+    
+    if (lastAssistantMessage) {
+      const assistantLower = lastAssistantMessage.content.toLowerCase();
+      
+      for (const {phrase, impact, context} of rapportPhrases) {
+        if (assistantLower.includes(phrase)) {
+          trackRapportBuilding({
+            description: `Used "${phrase}" to build rapport`,
+            impact,
+            context
+          });
+          break; // Only track the first rapport-building phrase found
+        }
+      }
     }
     
-    // Analyze for closing attempts
-    if (lastAssistantMessage && 
-        (lastAssistantMessage.content.toLowerCase().includes('book') ||
-        lastAssistantMessage.content.toLowerCase().includes('reserve') ||
-        lastAssistantMessage.content.toLowerCase().includes('schedule'))) {
-      trackClosingAttempt({
-        description: 'Attempted to close the sale',
-        effectiveness: 'medium',
-        context: 'Closing attempt'
-      });
+    // Analyze for closing attempts - expanded
+    const closingPhrases = [
+      {phrase: 'book', effectiveness: 'medium', context: 'Direct booking'},
+      {phrase: 'reserve', effectiveness: 'medium', context: 'Reservation'},
+      {phrase: 'schedule', effectiveness: 'low', context: 'Scheduling'},
+      {phrase: 'secure your date', effectiveness: 'high', context: 'Creating urgency'},
+      {phrase: 'deposit', effectiveness: 'high', context: 'Payment discussion'},
+      {phrase: 'contract', effectiveness: 'high', context: 'Formal agreement'},
+      {phrase: 'hold the date', effectiveness: 'medium', context: 'Temporary hold'}
+    ];
+    
+    if (lastAssistantMessage) {
+      const assistantLower = lastAssistantMessage.content.toLowerCase();
+      
+      for (const {phrase, effectiveness, context} of closingPhrases) {
+        if (assistantLower.includes(phrase)) {
+          // Check if the client responded positively
+          const positiveResponse = messageLower.includes('yes') || 
+                                  messageLower.includes('sure') || 
+                                  messageLower.includes('ok') || 
+                                  messageLower.includes('sounds good');
+          
+          trackClosingAttempt({
+            description: `Used "${phrase}" closing technique`,
+            effectiveness: positiveResponse ? 'high' : effectiveness,
+            context,
+            result: positiveResponse ? 'Positive response' : 'No clear commitment'
+          });
+          break; // Only track the first closing attempt found
+        }
+      }
     }
+    
+    // Log analysis summary
+    console.log(`Interaction analysis for message: "${messageLower.substring(0, 50)}..."`);
   };
 
   const analyzeAssistantResponseImpact = (assistantMessage, chatHistory) => {
