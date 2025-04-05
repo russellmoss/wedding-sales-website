@@ -4,11 +4,11 @@ import { useAuth } from '../../contexts/AuthContext';
 
 function Sidebar({ isOpen, closeSidebar }) {
   const location = useLocation();
-  const { currentUser, userRole } = useAuth();
+  const { currentUser } = useAuth();
   const [expandedSections, setExpandedSections] = useState({
     weddings: true,
     sales: true,
-    admin: false
+    debug: false
   });
 
   const weddingPages = [
@@ -35,7 +35,7 @@ function Sidebar({ isOpen, closeSidebar }) {
     { path: '/sales/crm-tips', title: 'CRM Tips' }
   ];
 
-  const adminPages = [
+  const debugPages = [
     { path: '/admin/api-debug', title: 'API Debug Panel' }
   ];
 
@@ -50,15 +50,10 @@ function Sidebar({ isOpen, closeSidebar }) {
     return location.pathname === path ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-gray-100';
   };
 
-  // Check if user is an admin
-  const isAdmin = userRole === 'admin';
-  
-  // Debug log for admin status
+  // Debug log for user status
   useEffect(() => {
     console.log("Sidebar: Current user:", currentUser?.email);
-    console.log("Sidebar: User role:", userRole);
-    console.log("Sidebar: Is admin:", isAdmin);
-  }, [currentUser, userRole, isAdmin]);
+  }, [currentUser]);
 
   return (
     <>
@@ -185,16 +180,16 @@ function Sidebar({ isOpen, closeSidebar }) {
             </Link>
           </div>
           
-          {/* Admin Section - Only visible to admins */}
-          {isAdmin && (
+          {/* Debug Section - Available to all logged-in users */}
+          {currentUser && (
             <div className="px-4 mb-2">
               <div
-                className="flex items-center justify-between px-4 py-2 text-sm font-medium cursor-pointer text-red-600"
-                onClick={() => toggleSection('admin')}
+                className="flex items-center justify-between px-4 py-2 text-sm font-medium cursor-pointer text-blue-600"
+                onClick={() => toggleSection('debug')}
               >
-                <span>Admin</span>
+                <span>Debug Tools</span>
                 <svg
-                  className={`h-5 w-5 transform ${expandedSections.admin ? 'rotate-180' : ''}`}
+                  className={`h-5 w-5 transform ${expandedSections.debug ? 'rotate-180' : ''}`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -203,9 +198,9 @@ function Sidebar({ isOpen, closeSidebar }) {
                 </svg>
               </div>
               
-              {expandedSections.admin && (
+              {expandedSections.debug && (
                 <div className="mt-1 space-y-1">
-                  {adminPages.map((page) => (
+                  {debugPages.map((page) => (
                     <Link
                       key={page.path}
                       to={page.path}
