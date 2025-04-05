@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 function Sidebar({ isOpen, closeSidebar }) {
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
   const [expandedSections, setExpandedSections] = useState({
     weddings: true,
     sales: true,
@@ -51,7 +51,14 @@ function Sidebar({ isOpen, closeSidebar }) {
   };
 
   // Check if user is an admin
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = userRole === 'admin';
+  
+  // Debug log for admin status
+  useEffect(() => {
+    console.log("Sidebar: Current user:", currentUser?.email);
+    console.log("Sidebar: User role:", userRole);
+    console.log("Sidebar: Is admin:", isAdmin);
+  }, [currentUser, userRole, isAdmin]);
 
   return (
     <>

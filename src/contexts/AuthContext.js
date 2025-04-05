@@ -40,11 +40,14 @@ export function AuthProvider({ children }) {
     if (!user) return null;
     
     try {
+      console.log("Getting user data for:", user.email);
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       
       if (userSnap.exists()) {
-        return userSnap.data();
+        const userData = userSnap.data();
+        console.log("User data retrieved:", userData);
+        return userData;
       } else {
         // Create user document if it doesn't exist
         const userData = {
@@ -54,6 +57,7 @@ export function AuthProvider({ children }) {
         };
         try {
           await setDoc(userRef, userData);
+          console.log("Created new user document with role:", userData.role);
           return userData;
         } catch (error) {
           console.error("Error creating user document:", error);
@@ -74,9 +78,11 @@ export function AuthProvider({ children }) {
         const userData = await getUserData(user);
         setCurrentUser(user);
         setUserRole(userData?.role || 'user');
+        console.log("User authenticated:", user.email, "with role:", userData?.role || 'user');
       } else {
         setCurrentUser(null);
         setUserRole(null);
+        console.log("User signed out");
       }
       setLoading(false);
     });

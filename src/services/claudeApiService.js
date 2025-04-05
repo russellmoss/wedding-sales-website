@@ -3,33 +3,25 @@
  * Provides methods for sending messages to Claude and handling responses
  */
 
-import { makeRateLimitedRequest, formatClaudeError, trackTokenUsage } from '../utils/claudeApiUtils';
 import { logApiRequest, logApiResponse, logApiError } from '../utils/claudeApiLogger';
+import { makeRateLimitedRequest, formatClaudeError, trackTokenUsage } from '../utils/claudeApiUtils';
 
-// Configuration constants
-const API_BASE_URL = process.env.REACT_APP_CLAUDE_API_URL || 'https://api.anthropic.com/v1';
+// Update the API_BASE_URL to point to your proxy server
+const API_BASE_URL = 'http://localhost:3001/api/claude';
+
+// Default model and token settings
 const MODEL = process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229';
-const MAX_TOKENS = parseInt(process.env.REACT_APP_CLAUDE_MAX_TOKENS || '1000');
+const MAX_TOKENS = parseInt(process.env.REACT_APP_CLAUDE_MAX_TOKENS || '1000', 10);
 
 /**
- * Sends a message to Claude API and returns the response
- * 
- * @param {string} systemPrompt - Instructions for Claude on how to behave
+ * Send a message to Claude API through our proxy server
+ * @param {string} systemPrompt - The system prompt to set context
  * @param {Array} messages - Array of message objects with role and content
- * @param {Object} options - Additional options like temperature
- * @returns {Promise<Object>} - Claude's response
+ * @param {Object} options - Additional options for the API call
+ * @returns {Promise<Object>} - The API response
  */
 export const sendMessageToClaude = async (systemPrompt, messages, options = {}) => {
   try {
-    const apiKey = process.env.REACT_APP_CLAUDE_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('Claude API key is not configured');
-    }
-    
-    // Determine request type for logging
-    const requestType = options.requestType || 'conversation';
-    
     // Construct the request body
     const requestBody = {
       model: options.model || MODEL,
@@ -40,17 +32,16 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
     };
     
     // Log the request
-    logApiRequest(requestType, requestBody);
+    logApiRequest(options.requestType || 'conversation', requestBody);
     
     // Use the rate-limited request function
     const data = await makeRateLimitedRequest(async () => {
-      // Make the API request
-      const response = await fetch(`${API_BASE_URL}/messages`, {
+      // Make the API request to our proxy server
+      const response = await fetch(API_BASE_URL, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
+          'Content-Type': 'application/json'
+          // No need to include the API key as it's handled by the proxy server
         },
         body: JSON.stringify(requestBody)
       });
@@ -71,7 +62,21 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
     trackTokenUsage(data);
     
     // Log the successful response
-    logApiResponse(requestType, data);
+    logApiResponse(options.requestType || 'conversation', data);
+    
+    // Ensure the response has the expected structure
+    if (!data || (!data.content && !data.message && !data.choices)) {
+      console.error("Unexpected Claude API response structure:", data);
+      // Create a fallback response structure
+      return {
+        content: [
+          {
+            type: 'text',
+            text: "I'm having trouble understanding. Could you please rephrase that?"
+          }
+        ]
+      };
+    }
     
     return data;
   } catch (error) {
@@ -87,99 +92,100 @@ export const sendMessageToClaude = async (systemPrompt, messages, options = {}) 
 };
 
 /**
- * Creates a system prompt for a sales simulator scenario
- * 
- * @param {Object} scenario - The scenario object with context and client information
- * @returns {string} - Formatted system prompt for Claude
+ * Create a system prompt for a sales scenario
+ * @param {Object} scenario - The scenario object
+ * @returns {string} - The formatted system prompt
  */
 export const createScenarioSystemPrompt = (scenario) => {
-  const systemPrompt = `
-You are role-playing as a potential wedding client named ${scenario.clientPersonality.name} who is considering Milea Estate Vineyard as a wedding venue.
+  if (!scenario) {
+    console.error("createScenarioSystemPrompt called with null or undefined scenario");
+    return "You are an AI sales trainer evaluating a sales conversation for a wedding venue.";
+  }
+  
+  console.log("Creating system prompt for scenario:", scenario);
+  
+  // Format evaluation criteria from object to string
+  let criteriaList = "";
+  
+  if (scenario.evaluationCriteria) {
+    if (Array.isArray(scenario.evaluationCriteria)) {
+      // Handle array format
+      criteriaList = scenario.evaluationCriteria
+        .map(criteria => `- ${criteria.description} (${criteria.weight} points)`)
+        .join('\n');
+    } else if (typeof scenario.evaluationCriteria === 'object') {
+      // Handle object format
+      criteriaList = Object.entries(scenario.evaluationCriteria)
+        .map(([key, criteria]) => `- ${criteria.description} (${criteria.weight} points)`)
+        .join('\n');
+    }
+  }
 
-# Client Personality
-- Name: ${scenario.clientPersonality.name}
-- Traits: ${scenario.clientPersonality.traits.join(', ')}
-- Concerns: ${scenario.clientPersonality.concerns.join(', ')}
+  const prompt = `You are an AI sales trainer evaluating a sales conversation for a wedding venue.
+Scenario: ${scenario.title || 'Wedding Venue Sales'}
+Description: ${scenario.description || 'A conversation with a potential client about booking a wedding venue'}
 
-# Scenario Context
-${scenario.context}
+Your role is to:
+1. Respond as the customer in a realistic way
+2. Evaluate the sales representative's performance
+3. Provide constructive feedback
 
-# Your Role
-You should respond as this client would, expressing the personality traits and concerns listed above. Be realistic in your responses - don't be deliberately difficult, but raise appropriate concerns and questions that this type of client would have.
+Evaluation Criteria:
+${criteriaList || '- No specific criteria provided'}
 
-The sales person (user) is practicing their sales techniques. Your job is to provide a realistic client experience so they can practice addressing concerns, answering questions, and guiding the conversation toward a successful outcome.
+Current conversation stage: ${scenario.currentStage || 'Initial contact'}`;
 
-# Guidelines
-1. Stay in character at all times
-2. Express your concerns naturally throughout the conversation
-3. Respond positively to good sales techniques
-4. Don't make things too easy - the salesperson should have to work to address your concerns
-5. Keep responses concise (1-3 paragraphs maximum)
-6. Don't refer to yourself as an AI or mention that this is a simulation
-`;
-
-  // Log the system prompt for debugging
-  logApiRequest('scenario-system-prompt', { 
-    scenarioId: scenario.id,
-    scenarioTitle: scenario.title,
-    systemPrompt 
-  });
-
-  return systemPrompt;
+  console.log("Generated system prompt:", prompt);
+  return prompt;
 };
 
 /**
- * Creates a prompt for evaluating a completed sales conversation
- * 
- * @param {Object} scenario - The scenario object with evaluation criteria
- * @param {Array} chatHistory - The complete conversation history
- * @returns {string} - Evaluation prompt for Claude
+ * Create a prompt for evaluating a sales conversation
+ * @param {Object} scenario - The scenario object
+ * @param {Array} chatHistory - The conversation history
+ * @returns {string} - The evaluation prompt
  */
 export const createEvaluationPrompt = (scenario, chatHistory) => {
-  // Format chat history for the prompt
-  const formattedChatHistory = chatHistory.map(msg => {
-    const role = msg.type === 'user' ? 'Salesperson' : 'Client';
-    return `${role}: ${msg.content}`;
-  }).join('\n\n');
+  if (!scenario) {
+    console.error("createEvaluationPrompt called with null or undefined scenario");
+    return "Please evaluate this sales conversation for a wedding venue.";
+  }
   
-  // List all evaluation criteria
-  const criteriaList = Object.entries(scenario.evaluationCriteria)
-    .map(([key, criteria]) => `- ${criteria.description} (${criteria.weight} points)`)
-    .join('\n');
+  console.log("Creating evaluation prompt for scenario:", scenario);
   
-  const evaluationPrompt = `
-# Sales Conversation Evaluation
+  // Format evaluation criteria from object to string
+  let criteriaList = "";
+  
+  if (scenario.evaluationCriteria) {
+    if (Array.isArray(scenario.evaluationCriteria)) {
+      // Handle array format
+      criteriaList = scenario.evaluationCriteria
+        .map(criteria => `- ${criteria.description} (${criteria.weight} points)`)
+        .join('\n');
+    } else if (typeof scenario.evaluationCriteria === 'object') {
+      // Handle object format
+      criteriaList = Object.entries(scenario.evaluationCriteria)
+        .map(([key, criteria]) => `- ${criteria.description} (${criteria.weight} points)`)
+        .join('\n');
+    }
+  }
 
-## Scenario: ${scenario.title}
-${scenario.description}
+  const prompt = `Please evaluate this sales conversation for a wedding venue based on the following criteria:
 
-## Evaluation Criteria:
-${criteriaList}
+${criteriaList || '- No specific criteria provided'}
 
-## Conversation to Evaluate:
-${formattedChatHistory}
+Conversation History:
+${chatHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-## Evaluation Instructions
-1. Analyze the salesperson's performance based on the criteria above
-2. For each criterion, provide:
-   - A score out of the available points
-   - Specific examples from the conversation that justify the score
-   - Constructive feedback for improvement
-3. Calculate a total score (percentage)
-4. Provide 2-3 specific strengths demonstrated in the conversation
-5. Provide 2-3 specific areas for improvement
-6. End with a brief summary paragraph of overall performance
+Please provide:
+1. A numerical score from 0-100
+2. Specific feedback on strengths and areas for improvement
+3. Suggestions for better responses
 
-Format your response with clear headers and bullet points.
-`;
+Format your response as:
+Score: [number]
+Feedback: [detailed feedback]`;
 
-  // Log the evaluation prompt for debugging
-  logApiRequest('evaluation-prompt', { 
-    scenarioId: scenario.id,
-    scenarioTitle: scenario.title,
-    messageCount: chatHistory.length,
-    evaluationPrompt 
-  });
-
-  return evaluationPrompt;
+  console.log("Generated evaluation prompt:", prompt);
+  return prompt;
 }; 

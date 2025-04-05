@@ -41,6 +41,7 @@ const SimulatorChat = () => {
         try {
           // Create system prompt based on scenario
           const systemPrompt = createScenarioSystemPrompt(currentScenario);
+          console.log("System prompt created:", systemPrompt);
           
           // Prepare initial message for Claude
           const initialMessage = {
@@ -49,22 +50,65 @@ const SimulatorChat = () => {
           };
           
           // Send initial message to Claude
+          console.log("Sending initial message to Claude...");
           const response = await sendMessageToClaude(
             systemPrompt,
             [initialMessage],
-            { temperature: 0.8 }
+            { 
+              temperature: 0.8,
+              requestType: 'initial-message',
+              model: process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229'
+            }
           );
+          
+          console.log("Claude API response:", response);
+          
+          // Extract the AI's response text from the response structure
+          let aiResponseText = '';
+          
+          // Handle different possible response structures
+          if (response && response.content && Array.isArray(response.content) && response.content.length > 0) {
+            // New Claude API structure
+            if (response.content[0].text) {
+              aiResponseText = response.content[0].text;
+            } else if (response.content[0].type === 'text') {
+              aiResponseText = response.content[0].text;
+            }
+          } else if (response && response.message && response.message.content) {
+            // Alternative structure
+            aiResponseText = response.message.content;
+          } else if (response && typeof response === 'string') {
+            // Direct string response
+            aiResponseText = response;
+          } else if (response && response.choices && response.choices.length > 0) {
+            // OpenAI-style structure
+            aiResponseText = response.choices[0].message.content;
+          } else {
+            // Fallback - try to extract any text content
+            console.error("Unexpected response structure:", response);
+            aiResponseText = "I'm interested in learning more about your venue for our wedding. Could you tell me about Milea Estate Vineyard?";
+          }
+          
+          console.log("Extracted AI response text:", aiResponseText);
           
           // Add Claude's response to chat history
           const aiResponse = {
             type: 'ai',
-            content: response.content[0].text,
+            content: aiResponseText,
             timestamp: new Date().toISOString()
           };
           addMessage(aiResponse);
         } catch (err) {
           console.error("Error initiating chat:", err);
           setError(`Failed to start conversation: ${err.message}`);
+          
+          // Add fallback error message
+          const errorResponse = {
+            type: 'ai',
+            content: "I'm interested in learning more about your venue for our wedding. Could you tell me about Milea Estate Vineyard?",
+            timestamp: new Date().toISOString()
+          };
+          addMessage(errorResponse);
         } finally {
           setIsTyping(false);
         }
@@ -104,17 +148,53 @@ const SimulatorChat = () => {
         content: userMessage.content
       });
       
+      console.log("Sending message to Claude with history:", formattedHistory);
+      
       // Send to Claude API
       const response = await sendMessageToClaude(
         systemPrompt,
         formattedHistory,
-        { temperature: 0.8 }
+        { 
+          temperature: 0.8,
+          requestType: 'chat-message',
+          model: process.env.REACT_APP_CLAUDE_MODEL || 'claude-3-opus-20240229'
+        }
       );
+      
+      console.log("Claude API response:", response);
+      
+      // Extract the AI's response text from the response structure
+      let aiResponseText = '';
+      
+      // Handle different possible response structures
+      if (response && response.content && Array.isArray(response.content) && response.content.length > 0) {
+        // New Claude API structure
+        if (response.content[0].text) {
+          aiResponseText = response.content[0].text;
+        } else if (response.content[0].type === 'text') {
+          aiResponseText = response.content[0].text;
+        }
+      } else if (response && response.message && response.message.content) {
+        // Alternative structure
+        aiResponseText = response.message.content;
+      } else if (response && typeof response === 'string') {
+        // Direct string response
+        aiResponseText = response;
+      } else if (response && response.choices && response.choices.length > 0) {
+        // OpenAI-style structure
+        aiResponseText = response.choices[0].message.content;
+      } else {
+        // Fallback - try to extract any text content
+        console.error("Unexpected response structure:", response);
+        aiResponseText = "I'm having trouble understanding. Could you please rephrase that?";
+      }
+      
+      console.log("Extracted AI response text:", aiResponseText);
       
       // Add Claude's response to chat history
       const aiResponse = {
         type: 'ai',
-        content: response.content[0].text,
+        content: aiResponseText,
         timestamp: new Date().toISOString()
       };
       addMessage(aiResponse);
@@ -139,63 +219,58 @@ const SimulatorChat = () => {
     navigate('/simulator/feedback');
   };
 
-  if (isLoading) {
+  // If no scenario is available, show error
+  if (!currentScenario) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">No Scenario Selected</h2>
+          <button
+            onClick={() => navigate('/simulator')}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
+          >
+            Return to Scenarios
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
+      {/* Chat Header */}
       <div className="bg-white shadow-sm p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-gray-800">
-            {currentScenario?.title || 'Sales Simulation'}
-          </h1>
-          <button
-            onClick={handleEndSimulation}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-          >
-            End Simulation
-          </button>
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-xl font-semibold text-gray-900">{currentScenario.title}</h1>
+          <p className="text-sm text-gray-600">{currentScenario.description}</p>
         </div>
       </div>
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-4xl mx-auto space-y-4">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          
           {chatHistory.map((msg, index) => (
             <div
               key={index}
               className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg p-4 ${
+                className={`max-w-[80%] rounded-lg p-4 ${
                   msg.type === 'user'
                     ? 'bg-blue-500 text-white'
-                    : 'bg-white text-gray-800 shadow'
+                    : 'bg-white text-gray-900 shadow-sm'
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
-                <span className="text-xs opacity-75 mt-1 block">
+                <p className="text-xs mt-2 opacity-75">
                   {new Date(msg.timestamp).toLocaleTimeString()}
-                </span>
+                </p>
               </div>
             </div>
           ))}
-          
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-white text-gray-800 rounded-lg p-4 shadow">
+              <div className="bg-white text-gray-900 shadow-sm rounded-lg p-4">
                 <div className="flex space-x-2">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
@@ -204,30 +279,51 @@ const SimulatorChat = () => {
               </div>
             </div>
           )}
-          
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Message Input */}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+
+      {/* Chat Input */}
       <div className="bg-white border-t p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex space-x-4">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isTyping}
-          />
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSubmit} className="flex space-x-2">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isTyping}
+            />
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg disabled:opacity-50"
+              disabled={isTyping || !message.trim()}
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* End Simulation Button */}
+      <div className="bg-white border-t p-4">
+        <div className="max-w-4xl mx-auto flex justify-end">
           <button
-            type="submit"
-            disabled={isTyping || !message.trim()}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleEndSimulation}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg"
           >
-            Send
+            End Simulation
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
