@@ -122,6 +122,25 @@ const SimulatorBrief = () => {
             </ul>
           </div>
 
+          {scenario.id === 'qualification-call' && (
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Initial inquiry details</h2>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-600 mb-4">Review the initial inquiry details to prepare for the qualification call.</p>
+                <a 
+                  href={process.env.PUBLIC_URL + "/docs/downloads/Inquiry-details.pdf"} 
+                  download="Inquiry-details.pdf"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download the initial inquiry notes
+                </a>
+              </div>
+            </div>
+          )}
+
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Evaluation Criteria</h2>
             <div className="space-y-3">

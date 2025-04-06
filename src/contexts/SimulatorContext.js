@@ -394,8 +394,8 @@ export const SimulatorProvider = ({ children }) => {
         // Update emotion based on the message
         updateEmotion(newMessage, currentScenario);
         
-        // Only generate a response if explicitly requested
-        if (generateResponse) {
+        // Only generate a response if explicitly requested and it's not the initial message
+        if (generateResponse && updatedHistory.length > 1) {
           // Send the message to Claude and get a response
           const response = await sendMessageToClaude(
             createCustomerSystemPrompt(currentScenario),
@@ -423,8 +423,10 @@ export const SimulatorProvider = ({ children }) => {
           // Return the assistant message for the component to use
           return assistantMessage;
         }
-      } else if (messageType === 'assistant') {
-        // For assistant messages, analyze their impact on customer emotion
+      }
+      
+      // For assistant messages, analyze their impact on customer emotion
+      if (messageType === 'assistant') {
         analyzeAssistantResponseImpact(newMessage, updatedHistory);
       }
       

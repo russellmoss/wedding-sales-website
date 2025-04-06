@@ -162,34 +162,20 @@ const SimulatorChat = () => {
           const systemPrompt = createScenarioSystemPrompt(currentScenario);
           console.log("System prompt created:", systemPrompt);
           
-          // Prepare initial message for Claude - this should be the customer's inquiry
-          const initialMessage = {
-            role: "user",
-            content: "Hi, my name is Sarah and my fiancé Michael and I are interested in learning more about Milea Estate Vineyard for our wedding. Could you tell us about your venue?"
-          };
-          
           // Add the initial user message to chat history without sending to Claude
           console.log("Adding initial customer inquiry to chat history");
           const userMessage = {
             type: 'user',
-            content: initialMessage.content,
+            content: "Hi, my name is Sarah and my fiancé Michael and I are interested in learning more about Milea Estate Vineyard for our wedding. Could you tell us about your venue?",
             timestamp: new Date().toISOString()
           };
-          addMessage(userMessage, 'user', false);
+          await addMessage(userMessage, 'user', false);
           
           // We don't send this to Claude yet - the user will respond first
           console.log("Initial customer inquiry added. Waiting for user response.");
         } catch (err) {
           console.error("Error initiating chat:", err);
           setLocalError(`Failed to start conversation: ${err.message}`);
-          
-          // Add fallback error message
-          const errorResponse = {
-            type: 'ai',
-            content: "Thank you for your interest in Milea Estate Vineyard! I'd be happy to tell you about our venue. What aspects are you most interested in learning about?",
-            timestamp: new Date().toISOString()
-          };
-          addMessage(errorResponse);
         } finally {
           setIsTyping(false);
         }
