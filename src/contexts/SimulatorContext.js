@@ -77,32 +77,35 @@ export const SimulatorProvider = ({ children }) => {
       // Reset interaction tracking
       resetInteractions();
       
-      // Send initial message from the customer
-      const systemPrompt = createCustomerSystemPrompt(scenario);
-      
-      // Add a default initial message to avoid the "messages: at least one message is required" error
-      const initialUserMessage = {
-        role: "user",
-        content: "Hi, I'm interested in learning more about your venue for my wedding."
-      };
-      
-      const response = await sendMessageToClaude(systemPrompt, [initialUserMessage], { requestType: 'initial' });
-      
-      // Add the initial message to chat history
-      const initialMessage = {
-        type: 'assistant',
-        content: response.content[0].text,
-        timestamp: new Date().toISOString()
-      };
-      
-      // Add the initial message without generating a response
-      addMessage(initialMessage, 'assistant', false);
-      
-      // Analyze the impact of the initial message on customer emotion
-      analyzeAssistantResponseImpact(initialMessage, [initialMessage]);
-      
-      // Update emotion based on initial message
-      updateEmotion(initialMessage.content, scenario);
+      // Only add initial message for non-qualification-call scenarios
+      if (scenarioId !== 'qualification-call') {
+        // Send initial message from the customer
+        const systemPrompt = createCustomerSystemPrompt(scenario);
+        
+        // Add a default initial message to avoid the "messages: at least one message is required" error
+        const initialUserMessage = {
+          role: "user",
+          content: "Hi, I'm interested in learning more about your venue for my wedding."
+        };
+        
+        const response = await sendMessageToClaude(systemPrompt, [initialUserMessage], { requestType: 'initial' });
+        
+        // Add the initial message to chat history
+        const initialMessage = {
+          type: 'assistant',
+          content: response.content[0].text,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Add the initial message without generating a response
+        addMessage(initialMessage, 'assistant', false);
+        
+        // Analyze the impact of the initial message on customer emotion
+        analyzeAssistantResponseImpact(initialMessage, [initialMessage]);
+        
+        // Update emotion based on initial message
+        updateEmotion(initialMessage.content, scenario);
+      }
       
     } catch (error) {
       console.error('Error starting simulation:', error);

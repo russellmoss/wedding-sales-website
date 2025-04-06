@@ -112,42 +112,64 @@ const ChatExport = () => {
       document.body.removeChild(tempDiv);
       
       // Create PDF with proper dimensions
-      const imgWidth = 8.5 - 1; // 8.5" - 1" total margins
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF({
-        orientation: imgHeight > 11 ? 'portrait' : 'portrait',
+        orientation: 'portrait',
         unit: 'in',
         format: 'letter'
       });
       
-      // Add the canvas as an image
+      // Set margins
+      const margin = 0.5; // 0.5 inch margins
+      const pageWidth = 8.5 - (2 * margin); // 8.5" - 2 * margin
+      const pageHeight = 11 - (2 * margin); // 11" - 2 * margin
+      
+      // Calculate image dimensions to fit within margins
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Add the canvas as an image to the first page
       pdf.addImage(
         canvas.toDataURL('image/jpeg', 0.95),
         'JPEG',
-        0.5, // Left margin
-        0.5, // Top margin
+        margin, // Left margin
+        margin, // Top margin
         imgWidth,
         imgHeight
       );
       
       // If content is longer than one page, add additional pages
-      if (imgHeight > 10) { // 11" - 1" total margins
-        let remainingHeight = imgHeight - 10;
-        let currentPosition = -10;
+      if (imgHeight > pageHeight) {
+        // Calculate how many pages we need
+        const totalPages = Math.ceil(imgHeight / pageHeight);
         
-        while (remainingHeight > 0) {
+        // For each additional page
+        for (let i = 1; i < totalPages; i++) {
           pdf.addPage();
+          
+          // Calculate the portion of the image to show on this page
+          const yOffset = i * pageHeight;
+          
+          // Add the portion of the canvas for this page
           pdf.addImage(
             canvas.toDataURL('image/jpeg', 0.95),
             'JPEG',
-            0.5,
-            currentPosition,
+            margin, // Left margin
+            margin - yOffset, // Adjust Y position to show the next portion
             imgWidth,
             imgHeight
           );
-          remainingHeight -= 10;
-          currentPosition -= 10;
+          
+          // Add page number
+          pdf.setFontSize(8);
+          pdf.setTextColor(128, 128, 128);
+          pdf.text(`Page ${i + 1} of ${totalPages}`, pageWidth / 2 + margin, pageHeight + margin + 0.3, { align: 'center' });
         }
+        
+        // Add page number to first page
+        pdf.setPage(1);
+        pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`Page 1 of ${totalPages}`, pageWidth / 2 + margin, pageHeight + margin + 0.3, { align: 'center' });
       }
       
       // Save the PDF

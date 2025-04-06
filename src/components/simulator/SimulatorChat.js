@@ -162,17 +162,8 @@ const SimulatorChat = () => {
           const systemPrompt = createScenarioSystemPrompt(currentScenario);
           console.log("System prompt created:", systemPrompt);
           
-          // Add the initial user message to chat history without sending to Claude
-          console.log("Adding initial customer inquiry to chat history");
-          const userMessage = {
-            type: 'user',
-            content: "Hi, my name is Sarah and my fiancé Michael and I are interested in learning more about Milea Estate Vineyard for our wedding. Could you tell us about your venue?",
-            timestamp: new Date().toISOString()
-          };
-          await addMessage(userMessage, 'user', false);
-          
-          // We don't send this to Claude yet - the user will respond first
-          console.log("Initial customer inquiry added. Waiting for user response.");
+          // Instead of automatically adding initial message, we'll wait for "CALL" command
+          setLocalLoading(false);
         } catch (err) {
           console.error("Error initiating chat:", err);
           setLocalError(`Failed to start conversation: ${err.message}`);
@@ -183,24 +174,117 @@ const SimulatorChat = () => {
     };
     
     initiateChat();
-  }, [currentScenario, chatHistory.length, addMessage]);
+  }, [currentScenario, chatHistory.length]);
 
+  // Add function to handle the CALL initiation
+  const handleCallInitiation = async () => {
+    if (inputValue.trim().toUpperCase() === 'CALL') {
+      setInputValue('');
+      setIsTyping(true);
+      
+      try {
+        // Create system prompt based on scenario
+        const systemPrompt = createScenarioSystemPrompt(currentScenario);
+        
+        // Add a system message explaining what's happening
+        const systemMessage = {
+          type: 'system',
+          content: "Initiating phone call with Sarah Miller...",
+          timestamp: new Date().toISOString()
+        };
+        
+        await addMessage(systemMessage, 'system', false);
+        
+        // Add Sarah's initial greeting as if she answered the phone
+        const initialMessage = {
+          type: 'assistant',
+          content: "Hello, this is Sarah speaking.",
+          timestamp: new Date().toISOString()
+        };
+        
+        await addMessage(initialMessage, 'assistant', false);
+        
+        // Analyze the impact of the initial message on customer emotion
+        analyzeAssistantResponseImpact(initialMessage, [initialMessage]);
+        
+        // Update emotion based on initial message
+        updateEmotion(initialMessage.content, currentScenario);
+        
+      } catch (err) {
+        console.error("Error initiating call:", err);
+        setLocalError(`Failed to initiate call: ${err.message}`);
+      } finally {
+        setIsTyping(false);
+      }
+      
+      return true; // Return true to indicate we handled this input
+    }
+    
+    return false; // Return false to indicate this input was not handled
+  };
+
+  // Add the analyzeAssistantResponseImpact function
+  const analyzeAssistantResponseImpact = (message, context) => {
+    try {
+      // Get the current emotional state
+      const currentEmotionalState = getEmotionalJourney();
+      
+      // Analyze the message content for emotional triggers
+      const messageContent = message.content.toLowerCase();
+      
+      // Check for positive emotional triggers
+      if (messageContent.includes('welcome') || 
+          messageContent.includes('thank you') || 
+          messageContent.includes('happy to help') ||
+          messageContent.includes('excited')) {
+        updateEmotion('positive', 0.7, 'Assistant showed enthusiasm and welcome');
+      }
+      
+      // Check for neutral or professional responses
+      else if (messageContent.includes('hello') || 
+               messageContent.includes('hi') || 
+               messageContent.includes('speaking')) {
+        updateEmotion('neutral', 0.5, 'Assistant provided a standard greeting');
+      }
+      
+      // Check for potential negative triggers
+      else if (messageContent.includes('sorry') || 
+               messageContent.includes('unavailable') || 
+               messageContent.includes('cannot help')) {
+        updateEmotion('negative', 0.6, 'Assistant indicated potential limitations');
+      }
+      
+      // Log the analysis for debugging
+      console.log("Assistant response analysis:", {
+        message: message.content,
+        currentEmotion: currentEmotionalState.currentEmotion,
+        emotionIntensity: currentEmotionalState.emotionIntensity,
+        context: context.map(msg => msg.content)
+      });
+      
+    } catch (error) {
+      console.error("Error analyzing assistant response:", error);
+    }
+  };
+
+  // Modify the handleSubmit function to check for CALL command
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    // Add user message to chat and generate a response
+    // Check if this is a call initiation command
+    if (await handleCallInitiation()) return;
+
+    // Regular message handling continues as before...
     const userMessage = {
       type: 'user',
       content: inputValue,
       timestamp: new Date().toISOString()
     };
     
-    // Set typing indicator before adding the message
     setIsTyping(true);
     
     try {
-      // Add the message and generate a response
       await addMessage(userMessage, 'user', true);
       setInputValue('');
     } catch (err) {
@@ -218,116 +302,6 @@ const SimulatorChat = () => {
       console.error('Error navigating to export page:', err);
       setLocalError('Failed to navigate to export page. Please try again.');
     }
-  };
-
-  const renderEmotionIndicator = () => {
-    if (!isSimulationActive) return null;
-    
-    const emotionColor = getEmotionColor(currentEmotion);
-    const intensityPercent = Math.round(emotionIntensity * 100);
-    
-    // Determine if this is a concerning emotion level that needs attention
-    const isNegativeEmotion = currentEmotion ? ['frustrated', 'angry', 'disappointed', 'worried', 
-                              'concerned', 'confused', 'doubtful', 'annoyed',
-                              'very_negative', 'negative'].includes(currentEmotion) : false;
-    
-    const isHighIntensity = intensityPercent > 70;
-    const needsAttention = isNegativeEmotion && isHighIntensity;
-    
-    // Get emoji for current emotion
-    const getEmotionEmoji = (emotion) => {
-      if (!emotion) return '😐'; // Return default emoji if emotion is undefined
-      
-      switch(emotion.toLowerCase()) {
-        case 'happy': return '😊';
-        case 'excited': return '🤩';
-        case 'pleased': return '😌';
-        case 'hopeful': return '🤗';
-        case 'interested': return '🧐';
-        case 'grateful': return '🙏';
-        case 'neutral': return '😐';
-        case 'concerned': return '😟';
-        case 'worried': return '😰';
-        case 'frustrated': return '😤';
-        case 'angry': return '😠';
-        case 'disappointed': return '😞';
-        case 'confused': return '😕';
-        case 'doubtful': return '🤨';
-        case 'very_positive': return '😁';
-        case 'positive': return '🙂';
-        case 'very_negative': return '😡';
-        case 'negative': return '☹️';
-        default: return '😐';
-      }
-    };
-    
-    const emotionEmoji = getEmotionEmoji(currentEmotion);
-    
-    return (
-      <div className={`emotion-indicator ${needsAttention ? 'attention-needed' : ''}`}
-           style={needsAttention ? {
-             backgroundColor: '#ffeeee',
-             borderLeft: `4px solid ${emotionColor}`,
-             padding: '12px',
-             animation: 'pulse 2s infinite'
-           } : {}}>
-        <div className="emotion-label" style={{ fontSize: needsAttention ? '18px' : '16px', display: 'flex', alignItems: 'center' }}>
-          <span style={{ marginRight: '8px', fontSize: '24px' }}>{emotionEmoji}</span>
-          Customer Emotion: <span style={{ 
-            color: emotionColor, 
-            fontWeight: needsAttention ? 'bold' : 'normal',
-            marginLeft: '4px'
-          }}>
-            {currentEmotion ? currentEmotion.charAt(0).toUpperCase() + currentEmotion.slice(1) : 'Neutral'}
-          </span>
-          {needsAttention && 
-            <span style={{ 
-              marginLeft: '10px', 
-              backgroundColor: '#ffcccb', 
-              padding: '3px 8px', 
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 'bold' 
-            }}>
-              Needs Attention!
-            </span>
-          }
-        </div>
-        <div className="emotion-intensity" style={{ marginTop: '8px' }}>
-          Intensity: <strong>{intensityPercent}%</strong>
-          <div className="intensity-bar" style={{ 
-            height: '8px', 
-            backgroundColor: '#e9ecef',
-            borderRadius: '4px',
-            marginTop: '6px' 
-          }}>
-            <div 
-              className="intensity-fill" 
-              style={{ 
-                width: `${intensityPercent}%`,
-                backgroundColor: emotionColor,
-                height: '100%',
-                borderRadius: '4px',
-                transition: 'width 0.5s ease-out'
-              }}
-            />
-          </div>
-        </div>
-        
-        {needsAttention && (
-          <div style={{ 
-            marginTop: '10px', 
-            fontSize: '14px', 
-            color: '#d32f2f',
-            backgroundColor: 'rgba(211, 47, 47, 0.1)',
-            padding: '8px',
-            borderRadius: '4px'
-          }}>
-            <strong>Warning:</strong> Customer is showing signs of {currentEmotion || 'frustration'}. Consider addressing their concerns immediately.
-          </div>
-        )}
-      </div>
-    );
   };
 
   // Handle emotion override
@@ -372,27 +346,6 @@ const SimulatorChat = () => {
         <div className="max-w-4xl mx-auto">
           <h1 className="text-xl font-semibold text-gray-900">{currentScenario.title}</h1>
           <p className="text-sm text-gray-600">{currentScenario.description}</p>
-          {renderEmotionIndicator()}
-          
-          {/* Response Timer */}
-          {isTimeoutActive && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-blue-800">
-                  <span className="font-medium">Response Timer:</span> Customer expects a response within 30 minutes
-                </div>
-                <div className={`text-sm font-mono ${timeRemaining < 300 ? 'text-red-600 font-bold' : 'text-blue-800'}`}>
-                  {formatTimeRemaining()}
-                </div>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
-                  style={{ width: `${(timeRemaining / (30 * 60)) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -417,17 +370,6 @@ const SimulatorChat = () => {
                 <p className="text-xs mt-2 opacity-75 text-left">
                   {new Date(msg.timestamp).toLocaleTimeString()}
                 </p>
-                {msg.type === 'assistant' && (
-                  <div className="message-emotion text-left">
-                    <span className="emotion-label">Emotion:</span>
-                    <span 
-                      className="emotion-value"
-                      style={{ color: getEmotionColor(msg.emotion) }}
-                    >
-                      {msg.emotion || 'neutral'}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           ))}

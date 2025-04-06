@@ -123,6 +123,24 @@ const SimulatorBrief = () => {
           </div>
 
           {scenario.id === 'qualification-call' && (
+            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 mb-6">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">Call Simulation Instructions</h3>
+              <p className="text-blue-700 mb-2">
+                This is a phone call simulation. To begin the call:
+              </p>
+              <ol className="list-decimal pl-5 text-blue-700 mb-3">
+                <li>Click the "Start Simulation" button below</li>
+                <li>Once the chat opens, type <strong>CALL</strong> and press Enter to initiate the phone call</li>
+                <li>Sarah will answer the phone, and you can begin the qualification call</li>
+                <li>Remember to review the inquiry details above before starting</li>
+              </ol>
+              <p className="text-blue-700 font-medium">
+                This simulation will help you practice qualification call skills, building rapport, and gathering key information.
+              </p>
+            </div>
+          )}
+
+          {scenario.id === 'qualification-call' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">Initial inquiry details</h2>
               <div className="bg-gray-50 p-4 rounded-lg">
