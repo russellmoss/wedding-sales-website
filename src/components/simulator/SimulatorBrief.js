@@ -208,6 +208,25 @@ const SimulatorBrief = () => {
             </div>
           )}
 
+          {scenario.id === 'venue-tour' && (
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">CRM Details</h2>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-600 mb-4">Review the CRM details to prepare for the tour.</p>
+                <a 
+                  href={process.env.PUBLIC_URL + "/docs/downloads/morgan_casey_lead.pdf"} 
+                  download="morgan_casey_lead.pdf"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download the lead sheet
+                </a>
+              </div>
+            </div>
+          )}
+
           {scenario.id === 'qualification-call' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">Initial inquiry details</h2>
@@ -227,20 +246,38 @@ const SimulatorBrief = () => {
             </div>
           )}
 
-          {scenario.id === 'venue-tour' && (
+          {scenario.id === 'initial-inquiry' && (
+            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 mb-6">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">Initial Inquiry Simulation Instructions</h3>
+              <p className="text-blue-700 mb-2">
+                This is a simulation that will move from email to phone call:
+              </p>
+              <ol className="list-decimal pl-5 text-blue-700 mb-3">
+                <li>Read the initial inquiry that is in the downloadable PDF below</li>
+                <li>Respond to their inquiry by email first and ask if you may set up a phone call with them</li>
+                <li>After the email, you may choose to send a text message to them to let them know you sent them the email and that this is your line should they want to call, text or email</li>
+                <li>Your main goal at this stage in the funnel is to convert them from a lead to a tour</li>
+              </ol>
+              <p className="text-blue-700 font-medium">
+                This simulation will help you practice responding to initial inquiries, building rapport, and moving leads toward a venue tour.
+              </p>
+            </div>
+          )}
+
+          {scenario.id === 'initial-inquiry' && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">CRM Details</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Initial inquiry details</h2>
               <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-600 mb-4">Review the CRM details to prepare for the tour.</p>
+                <p className="text-gray-600 mb-4">Review the initial inquiry details to prepare for the qualification call.</p>
                 <a 
-                  href={process.env.PUBLIC_URL + "/docs/downloads/morgan_casey_lead.pdf"} 
-                  download="morgan_casey_lead.pdf"
+                  href={process.env.PUBLIC_URL + "/docs/downloads/Wedding_Inquiry_Smith.pdf"} 
+                  download="Wedding_Inquiry_Smith.pdf"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Download the lead sheet
+                  Download the initial inquiry notes
                 </a>
               </div>
             </div>
