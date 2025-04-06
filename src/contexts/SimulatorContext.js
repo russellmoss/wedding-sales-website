@@ -166,21 +166,111 @@ export const SimulatorProvider = ({ children }) => {
       // Parse the evaluation response
       const evaluationText = evaluationResponse.content[0].text;
       
-      // Extract score
-      const scoreMatch = evaluationText.match(/Score:\s*(\d+)%/i);
-      const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+      // Try to first look for an explicit overall score
+      let score = 0;
+      
+      // Pattern 1: "Score: 85%"
+      const scoreMatch1 = evaluationText.match(/Score:\s*(\d+)%/i);
+      if (scoreMatch1) {
+        score = parseInt(scoreMatch1[1]);
+      }
+      
+      // Pattern 2: "Overall Score: 85%"
+      if (score === 0) {
+        const scoreMatch2 = evaluationText.match(/Overall Score:\s*(\d+)%/i);
+        if (scoreMatch2) {
+          score = parseInt(scoreMatch2[1]);
+        }
+      }
+      
+      // Pattern 3: "Final Score: 85%"
+      if (score === 0) {
+        const scoreMatch3 = evaluationText.match(/Final Score:\s*(\d+)%/i);
+        if (scoreMatch3) {
+          score = parseInt(scoreMatch3[1]);
+        }
+      }
+      
+      // Pattern 4: Look for a number followed by % near the beginning of the text
+      if (score === 0) {
+        const scoreMatch4 = evaluationText.match(/(\d+)%/);
+        if (scoreMatch4) {
+          score = parseInt(scoreMatch4[1]);
+        }
+      }
+      
+      // If no explicit score is found, calculate it from criteria points
+      if (score === 0) {
+        // Parse individual criteria scores using regex to find patterns like "15/15 points" or "(15/20 points)"
+        const pointsPattern = /(\d+)\/(\d+)\s*points/gi;
+        let earnedPoints = 0;
+        let totalPoints = 0;
+        
+        let match;
+        while ((match = pointsPattern.exec(evaluationText)) !== null) {
+          earnedPoints += parseInt(match[1]);
+          totalPoints += parseInt(match[2]);
+        }
+        
+        // Also check for bonus points
+        const bonusPattern = /(\d+)\/(\d+)\s*bonus\s*points/gi;
+        while ((match = bonusPattern.exec(evaluationText)) !== null) {
+          earnedPoints += parseInt(match[1]);
+          totalPoints += parseInt(match[2]);
+        }
+        
+        // Check for penalty points
+        const penaltyPattern = /-(\d+)\s*points/gi;
+        while ((match = penaltyPattern.exec(evaluationText)) !== null) {
+          earnedPoints -= parseInt(match[1]);
+        }
+        
+        // Calculate percentage if we found any points
+        if (totalPoints > 0) {
+          score = Math.round((earnedPoints / totalPoints) * 100);
+        }
+        
+        // If we still don't have a score, try to calculate it from criteria scores
+        if (score === 0) {
+          // Look for criteria scores in the format "Criteria: 85%"
+          const criteriaScores = [];
+          const criteriaMatches = evaluationText.matchAll(/([A-Za-z\s]+):\s*(\d+)%/g);
+          
+          for (const match of criteriaMatches) {
+            const criteriaName = match[1].trim();
+            const criteriaScore = parseInt(match[2]);
+            
+            // Skip if it's a known non-criteria match
+            if (!['Score', 'Overall Score', 'Final Score'].includes(criteriaName)) {
+              criteriaScores.push(criteriaScore);
+            }
+          }
+          
+          // Calculate average of criteria scores if we found any
+          if (criteriaScores.length > 0) {
+            const sum = criteriaScores.reduce((acc, val) => acc + val, 0);
+            score = Math.round(sum / criteriaScores.length);
+          }
+        }
+      }
+      
+      // Ensure score is within valid range
+      score = Math.max(0, Math.min(100, score));
       
       // Extract issues
       const issuesMatch = evaluationText.match(/Issues:?\s*([\s\S]*?)(?=Strengths:|Score:|$)/i);
       const issues = issuesMatch ? issuesMatch[1].trim().split('\n').filter(line => line.trim()) : [];
       
       // Extract strengths
-      const strengthsMatch = evaluationText.match(/Strengths:?\s*([\s\S]*?)(?=Score:|$)/i);
+      const strengthsMatch = evaluationText.match(/Strengths:?\s*([\s\S]*?)(?=Issues:|Score:|$)/i);
       const strengths = strengthsMatch ? strengthsMatch[1].trim().split('\n').filter(line => line.trim()) : [];
       
       // Extract feedback
       const feedbackMatch = evaluationText.match(/Feedback:?\s*([\s\S]*?)$/i);
       const feedback = feedbackMatch ? feedbackMatch[1].trim() : '';
+      
+      // Log the extracted score for debugging
+      console.log('Extracted score from evaluation:', score);
       
       // Set the feedback
       setFeedback({

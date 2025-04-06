@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { salesSimulatorScenarios } from '../../data/salesSimulatorData';
+import RubricButton from '../rubrics/RubricButton';
 
 const SimulatorBrief = () => {
   const navigate = useNavigate();
@@ -136,13 +137,18 @@ const SimulatorBrief = () => {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4">
           <button
             onClick={handleStartSimulation}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Start Simulation
           </button>
+          
+          <RubricButton 
+            scenarioId={scenario.id}
+            tooltip="Evaluate this scenario using a standardized rubric"
+          />
         </div>
       </div>
     </div>

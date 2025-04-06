@@ -4,7 +4,7 @@ import ContentPage from '../layout/ContentPage';
 import SimulatorHome from './SimulatorHome';
 import SimulatorBrief from './SimulatorBrief';
 import SimulatorChat from './SimulatorChat';
-import FeedbackDisplay from './FeedbackDisplay';
+import ChatExport from './ChatExport';
 import { useSimulator } from '../../contexts/SimulatorContext';
 
 function SalesSimulator() {
@@ -37,7 +37,7 @@ function SalesSimulator() {
             )
           } 
         />
-        <Route path="feedback" element={<FeedbackDisplay />} />
+        <Route path="export" element={<ChatExport />} />
       </Routes>
     </ContentPage>
   );

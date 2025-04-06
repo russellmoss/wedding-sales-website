@@ -51,6 +51,9 @@ import CRMTips from './components/sales/CRMTips';
 import SalesSimulator from './components/simulator/SalesSimulator';
 import ApiDebugPanel from './components/simulator/ApiDebugPanel';
 
+// Rubric Components
+import RubricEvaluation from './components/rubrics/RubricEvaluation';
+
 import './App.css';
 import './styles/simulator.css';
 
@@ -113,6 +116,9 @@ function App() {
 
                         {/* Simulator routes */}
                         <Route path="/simulator/*" element={<SalesSimulator />} />
+                        
+                        {/* Rubric Evaluation routes */}
+                        <Route path="/rubrics/:scenarioId" element={<RubricEvaluation />} />
                         
                         {/* Admin routes */}
                         <Route path="/admin">

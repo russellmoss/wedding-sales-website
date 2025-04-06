@@ -309,5 +309,31 @@ ${emotionalJourneySection}
 ${interactionsSection}
 
 Please evaluate this sales conversation for a wedding venue.
+
+IMPORTANT SCORING INSTRUCTIONS:
+
+1. For each criterion, provide a score in the format "X/Y points" where:
+   - X is the points earned
+   - Y is the total possible points for that criterion
+   - Example: "8/10 points" for a criterion worth 10 points
+
+2. For each criterion, explain:
+   - What was done well (if any)
+   - What could be improved (if any)
+   - Specific examples from the conversation
+
+3. At the end of your evaluation, calculate and clearly state the overall score using this format:
+   "Overall Score: Z%" where Z is the percentage calculated by dividing total points earned by total points possible, multiplied by 100.
+
+4. Provide a summary of strengths and areas for improvement.
+
+Your evaluation should follow this structure:
+
+1. Criterion-by-criterion evaluation with scores in "X/Y points" format
+2. Strengths (list 3-5 key strengths)
+3. Areas for Improvement (list 3-5 areas)
+4. Overall Score: Z%
+
+Please ensure your evaluation is detailed, specific, and includes examples from the conversation to support your scoring.
 `;
 };
