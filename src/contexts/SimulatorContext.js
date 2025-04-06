@@ -77,34 +77,65 @@ export const SimulatorProvider = ({ children }) => {
       // Reset interaction tracking
       resetInteractions();
       
-      // Only add initial message for non-qualification-call scenarios
-      if (scenarioId !== 'qualification-call') {
+      // Only add initial message for non-qualification-call and non-venue-tour scenarios
+      if (scenarioId !== 'qualification-call' && scenarioId !== 'venue-tour') {
         // Send initial message from the customer
         const systemPrompt = createCustomerSystemPrompt(scenario);
         
         // Add a default initial message to avoid the "messages: at least one message is required" error
-        const initialUserMessage = {
-          role: "user",
-          content: "Hi, I'm interested in learning more about your venue for my wedding."
-        };
+        let initialUserMessage;
         
-        const response = await sendMessageToClaude(systemPrompt, [initialUserMessage], { requestType: 'initial' });
-        
-        // Add the initial message to chat history
-        const initialMessage = {
-          type: 'assistant',
-          content: response.content[0].text,
-          timestamp: new Date().toISOString()
-        };
-        
-        // Add the initial message without generating a response
-        addMessage(initialMessage, 'assistant', false);
-        
-        // Analyze the impact of the initial message on customer emotion
-        analyzeAssistantResponseImpact(initialMessage, [initialMessage]);
-        
-        // Update emotion based on initial message
-        updateEmotion(initialMessage.content, scenario);
+        if (scenarioId === 'initial-inquiry') {
+          initialUserMessage = {
+            role: "user",
+            content: `First Name: Taylor & Jordan
+Last Name: Smith
+Email: taylor@email.com
+Phone: (555) 123-4567
+Event Type: Wedding
+Desired Date: Summer 2025
+Start Time: 4:00 PM
+Budget: $25,000 - $30,000
+Estimated Group Size: 120 guests
+Tell us about your event:
+We are a couple looking for a picturesque vineyard venue for our summer wedding next year. We're excited to find a location that offers both beautiful scenery and an intimate atmosphere for our 120 guests. We're hoping to create a memorable day that captures the romance of a vineyard setting while being mindful of our budget.`
+          };
+          
+          // Add the initial message to chat history without generating a response
+          const initialMessage = {
+            type: 'user',
+            content: initialUserMessage.content,
+            timestamp: new Date().toISOString()
+          };
+          
+          addMessage(initialMessage, 'user', false);
+          
+          // Don't generate an initial response for the initial inquiry scenario
+          // The user will respond as the sales representative
+        } else {
+          initialUserMessage = {
+            role: "user",
+            content: "Hi, I'm interested in learning more about your venue for my wedding."
+          };
+          
+          const response = await sendMessageToClaude(systemPrompt, [initialUserMessage], { requestType: 'initial' });
+          
+          // Add the initial message to chat history
+          const initialMessage = {
+            type: 'assistant',
+            content: response.content[0].text,
+            timestamp: new Date().toISOString()
+          };
+          
+          // Add the initial message without generating a response
+          addMessage(initialMessage, 'assistant', false);
+          
+          // Analyze the impact of the initial message on customer emotion
+          analyzeAssistantResponseImpact(initialMessage, [initialMessage]);
+          
+          // Update emotion based on initial message
+          updateEmotion(initialMessage.content, scenario);
+        }
       }
       
     } catch (error) {

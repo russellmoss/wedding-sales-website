@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { sendMessageToClaude, createScenarioSystemPrompt } from '../../services/claudeApiService';
 import { useEmotion } from '../../contexts/EmotionContext';
+import CallInstructions from './CallInstructions';
+import VenueTourInstructions from './VenueTourInstructions';
+import InitialInquiryInstructions from './InitialInquiryInstructions';
 import '../../styles/animations.css';
 
 const SimulatorChat = () => {
@@ -34,6 +37,11 @@ const SimulatorChat = () => {
   const [overrideEmotionType, setOverrideEmotionType] = useState('neutral');
   const [overrideIntensity, setOverrideIntensity] = useState(0.7);
   const [overrideReason, setOverrideReason] = useState('');
+  
+  // State for showing/hiding instructions
+  const [showCallInstructions, setShowCallInstructions] = useState(true);
+  const [showVenueTourInstructions, setShowVenueTourInstructions] = useState(true);
+  const [showInitialInquiryInstructions, setShowInitialInquiryInstructions] = useState(true);
   
   // Combine local and context loading states
   const isLoading = localLoading || simulatorLoading;
@@ -223,6 +231,53 @@ const SimulatorChat = () => {
     return false; // Return false to indicate this input was not handled
   };
 
+  // Add function to handle the GREET initiation for venue tour
+  const handleGreetingInitiation = async () => {
+    if (inputValue.trim().toUpperCase() === 'GREET') {
+      setInputValue('');
+      setIsTyping(true);
+      
+      try {
+        // Create system prompt based on scenario
+        const systemPrompt = createScenarioSystemPrompt(currentScenario);
+        
+        // Add a system message explaining what's happening
+        const systemMessage = {
+          type: 'system',
+          content: "Initiating venue tour with Morgan and Casey...",
+          timestamp: new Date().toISOString()
+        };
+        
+        await addMessage(systemMessage, 'system', false);
+        
+        // Add Morgan and Casey's initial greeting as if they arrived at the venue
+        const initialMessage = {
+          type: 'assistant',
+          content: "Hi there! We're Morgan and Casey. We're so excited to see the venue today!",
+          timestamp: new Date().toISOString()
+        };
+        
+        await addMessage(initialMessage, 'assistant', false);
+        
+        // Analyze the impact of the initial message on customer emotion
+        analyzeAssistantResponseImpact(initialMessage, [initialMessage]);
+        
+        // Update emotion based on initial message
+        updateEmotion(initialMessage.content, currentScenario);
+        
+      } catch (err) {
+        console.error("Error initiating venue tour:", err);
+        setLocalError(`Failed to initiate venue tour: ${err.message}`);
+      } finally {
+        setIsTyping(false);
+      }
+      
+      return true; // Return true to indicate we handled this input
+    }
+    
+    return false; // Return false to indicate this input was not handled
+  };
+
   // Add the analyzeAssistantResponseImpact function
   const analyzeAssistantResponseImpact = (message, context) => {
     try {
@@ -274,6 +329,9 @@ const SimulatorChat = () => {
 
     // Check if this is a call initiation command
     if (await handleCallInitiation()) return;
+    
+    // Check if this is a greeting initiation command for venue tour
+    if (await handleGreetingInitiation()) return;
 
     // Regular message handling continues as before...
     const userMessage = {
@@ -339,6 +397,97 @@ const SimulatorChat = () => {
     }
   };
 
+  const renderMessage = (message, index) => {
+    const isUser = message.type === 'user';
+    const isSystem = message.type === 'system';
+    const isInitialInquiry = currentScenario?.id === 'initial-inquiry' && index === 0 && isUser;
+    
+    return (
+      <div 
+        key={index} 
+        className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+      >
+        <div 
+          className={`max-w-[80%] rounded-lg p-4 ${
+            isSystem 
+              ? 'bg-gray-100 text-gray-600 text-sm' 
+              : isUser 
+                ? 'bg-blue-600 text-white' 
+                : isInitialInquiry
+                  ? 'bg-white border border-gray-300 text-gray-800'
+                  : currentScenario?.id === 'qualification-call' 
+                    ? 'bg-purple-100 text-gray-800 border-l-4 border-purple-500'
+                    : currentScenario?.id === 'venue-tour'
+                      ? 'bg-green-100 text-gray-800 border-l-4 border-green-500'
+                      : 'bg-gray-100 text-gray-800'
+          }`}
+        >
+          {isInitialInquiry ? (
+            <div className="font-mono text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="font-semibold">First Name:</div>
+                <div>Taylor & Jordan</div>
+                
+                <div className="font-semibold">Last Name:</div>
+                <div>Smith</div>
+                
+                <div className="font-semibold">Email:</div>
+                <div>taylor@email.com</div>
+                
+                <div className="font-semibold">Phone:</div>
+                <div>(555) 123-4567</div>
+                
+                <div className="font-semibold">Event Type:</div>
+                <div>Wedding</div>
+                
+                <div className="font-semibold">Desired Date:</div>
+                <div>Summer 2025</div>
+                
+                <div className="font-semibold">Start Time:</div>
+                <div>4:00 PM</div>
+                
+                <div className="font-semibold">Budget:</div>
+                <div>$25,000 - $30,000</div>
+                
+                <div className="font-semibold">Estimated Group Size:</div>
+                <div>120 guests</div>
+              </div>
+              
+              <div className="mt-3">
+                <div className="font-semibold">Tell us about your event:</div>
+                <div className="mt-1">
+                  We are a couple looking for a picturesque vineyard venue for our summer wedding next year. We're excited to find a location that offers both beautiful scenery and an intimate atmosphere for our 120 guests. We're hoping to create a memorable day that captures the romance of a vineyard setting while being mindful of our budget.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {!isUser && (
+                <div className="flex items-center mb-2">
+                  {currentScenario?.id === 'qualification-call' && (
+                    <span className="text-xs font-medium text-purple-700 bg-purple-100 px-2 py-1 rounded mr-2">Sarah</span>
+                  )}
+                  {currentScenario?.id === 'venue-tour' && (
+                    <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded mr-2">Morgan & Casey</span>
+                  )}
+                  {currentScenario?.id === 'initial-inquiry' && (
+                    <span className="text-xs font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded mr-2">Taylor & Jordan (Email)</span>
+                  )}
+                </div>
+              )}
+              {isUser && currentScenario?.id === 'initial-inquiry' && (
+                <div className="flex items-center mb-2">
+                  <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded mr-2">You - Email Response</span>
+                </div>
+              )}
+              <div className="whitespace-pre-wrap">{message.content}</div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Chat Header */}
@@ -349,30 +498,23 @@ const SimulatorChat = () => {
         </div>
       </div>
 
+      {/* Instructions for call, venue tour, or initial inquiry */}
+      {isSimulationActive && currentScenario?.id === 'qualification-call' && showCallInstructions && (
+        <CallInstructions onDismiss={() => setShowCallInstructions(false)} />
+      )}
+      
+      {isSimulationActive && currentScenario?.id === 'venue-tour' && showVenueTourInstructions && (
+        <VenueTourInstructions onDismiss={() => setShowVenueTourInstructions(false)} />
+      )}
+      
+      {isSimulationActive && currentScenario?.id === 'initial-inquiry' && showInitialInquiryInstructions && (
+        <InitialInquiryInstructions onDismiss={() => setShowInitialInquiryInstructions(false)} />
+      )}
+
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-4xl mx-auto space-y-4">
-          {chatHistory.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-4 text-left ${
-                  msg.type === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : msg.type === 'system'
-                    ? 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500'
-                    : 'bg-white text-gray-900 shadow-sm'
-                }`}
-              >
-                <p className="whitespace-pre-wrap text-left">{msg.content}</p>
-                <p className="text-xs mt-2 opacity-75 text-left">
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </p>
-              </div>
-            </div>
-          ))}
+          {chatHistory.map((msg, index) => renderMessage(msg, index))}
           {isTyping && (
             <div className="flex justify-start">
               <div className="bg-white text-gray-900 shadow-sm rounded-lg p-4">
@@ -404,7 +546,15 @@ const SimulatorChat = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your message... (Press Shift+Enter for new line)"
+              placeholder={
+                chatHistory.length === 0 && currentScenario?.id === 'qualification-call'
+                  ? "Type CALL to start the phone conversation..."
+                  : chatHistory.length === 0 && currentScenario?.id === 'venue-tour'
+                  ? "Type GREET to start the venue tour..."
+                  : currentScenario?.id === 'initial-inquiry'
+                  ? "Type your email response to Taylor and Jordan's inquiry..."
+                  : "Type your message... (Press Shift+Enter for new line)"
+              }
               className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows="3"
               disabled={isLoading}

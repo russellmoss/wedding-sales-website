@@ -45,6 +45,55 @@ const SimulatorBrief = () => {
     navigate('/simulator/chat');
   };
 
+  const renderScenarioInstructions = () => {
+    if (!scenario) return null;
+
+    switch (scenario.id) {
+      case 'qualification-call':
+        return (
+          <div className="scenario-instructions">
+            <h3>Call Simulation Instructions</h3>
+            <p>This is a phone call simulation. To begin the call:</p>
+            <ol>
+              <li>Click the "Start Simulation" button below</li>
+              <li>Once the chat opens, type <strong>CALL</strong> and press Enter to initiate the phone call</li>
+              <li>Sarah will answer the phone, and you can begin the qualification call</li>
+              <li>Remember to review the inquiry details above before starting</li>
+            </ol>
+            <p>This simulation will help you practice qualification call skills, building rapport, and gathering key information.</p>
+          </div>
+        );
+      case 'venue-tour':
+        return (
+          <div className="scenario-instructions">
+            <h3>Venue Tour Instructions</h3>
+            <p>This is a venue tour simulation. To begin the tour:</p>
+            <ol>
+              <li>Click the "Start Simulation" button below</li>
+              <li>Once the chat opens, type <strong>GREET</strong> and press Enter to initiate the tour with a greeting</li>
+              <li>Morgan and Casey will greet you in the parking lot</li>
+              <li>Remember to review the details from your Perfect Venue CRM before starting</li>
+              <li>Review the Wedding Tour document to prepare for the tour</li>
+            </ol>
+            <div className="crm-details">
+              <h4>CRM Details</h4>
+              <div className="crm-box">
+                <p>Review the CRM details to prepare for the tour</p>
+                <button 
+                  className="download-button"
+                  onClick={() => window.open('/docs/downloads/morgan_case_lead.pdf', '_blank')}
+                >
+                  Download the lead sheet
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -71,7 +120,7 @@ const SimulatorBrief = () => {
             {scenario.difficulty}
           </span>
         </div>
-        
+
         <div className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">Scenario Overview</h2>
@@ -140,6 +189,25 @@ const SimulatorBrief = () => {
             </div>
           )}
 
+          {scenario.id === 'venue-tour' && (
+            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 mb-6">
+              <h3 className="text-lg font-semibold text-blue-800 mb-2">Venue Tour Instructions</h3>
+              <p className="text-blue-700 mb-2">
+                This is a venue tour simulation. To begin the tour:
+              </p>
+              <ol className="list-decimal pl-5 text-blue-700 mb-3">
+                <li>Click the "Start Simulation" button below</li>
+                <li>Once the chat opens, type <strong>GREET</strong> and press Enter to initiate the tour with a greeting</li>
+                <li>Morgan and Casey will greet you in the parking lot</li>
+                <li>Remember to review the details from your Perfect Venue CRM before starting</li>
+                <li>Review the Wedding Tour document to prepare for the tour</li>
+              </ol>
+              <p className="text-blue-700 font-medium">
+                This simulation will help you practice venue tour skills, building rapport, and showcasing the venue.
+              </p>
+            </div>
+          )}
+
           {scenario.id === 'qualification-call' && (
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">Initial inquiry details</h2>
@@ -154,6 +222,44 @@ const SimulatorBrief = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                   Download the initial inquiry notes
+                </a>
+              </div>
+            </div>
+          )}
+
+          {scenario.id === 'venue-tour' && (
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">CRM Details</h2>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-600 mb-4">Review the CRM details to prepare for the tour.</p>
+                <a 
+                  href={process.env.PUBLIC_URL + "/docs/downloads/morgan_casey_lead.pdf"} 
+                  download="morgan_casey_lead.pdf"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download the lead sheet
+                </a>
+              </div>
+            </div>
+          )}
+
+          {scenario.id === 'venue-tour' && (
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Wedding Tour</h2>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-600 mb-4">Review the details of the tour</p>
+                <a 
+                  href={process.env.PUBLIC_URL + "/docs/downloads/Milea_Estate_Wedding_Tour.pdf"} 
+                  download="Milea_Estate_Wedding_Tour.pdf"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Vineyard Tour script
                 </a>
               </div>
             </div>
