@@ -15,7 +15,8 @@ const SimulatorChat = () => {
     isSimulationActive,
     getEmotionalJourney,
     isLoading: simulatorLoading,
-    error: simulatorError
+    error: simulatorError,
+    resetSimulation
   } = useSimulator();
   
   const { currentEmotion, emotionIntensity, updateEmotion, overrideEmotion } = useEmotion();
@@ -225,13 +226,11 @@ const SimulatorChat = () => {
 
   const handleEndSimulation = async () => {
     try {
-      setLocalLoading(true);
-      await endSimulation();
-      navigate('/simulator/feedback');
+      // Navigate to the export page without resetting the simulation
+      navigate('/simulator/export');
     } catch (err) {
-      console.error('Error ending simulation:', err);
-      setLocalError('Failed to generate feedback. Please try again.');
-      setLocalLoading(false);
+      console.error('Error navigating to export page:', err);
+      setLocalError('Failed to navigate to export page. Please try again.');
     }
   };
 
@@ -498,17 +497,9 @@ const SimulatorChat = () => {
         <div className="max-w-4xl mx-auto flex justify-end">
           <button
             onClick={handleEndSimulation}
-            className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center"
-            disabled={isLoading}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
           >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                Processing...
-              </>
-            ) : (
-              'End Simulation'
-            )}
+            Export Conversation
           </button>
         </div>
       </div>
